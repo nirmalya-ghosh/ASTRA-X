@@ -29,27 +29,62 @@ export default function PipelineWizard() {
     if (files.length === 0) return;
     
     setIsUploading(true);
-    setLogs(["Initializing analysis environment...", "Allocating cloud resources..."]);
+    setLogs(["Initializing analysis environment..."]);
     
-    // Simulate Vercel-like build logs
-    const stages = [
-      "Uploading FITS datasets...",
-      "Calibrating images (Dark/Flat fielding)...",
-      "Running Source Extractor (SEP)...",
-      "Aligning astronomical frames...",
-      "Executing transient detection algorithms...",
-      "Ranking candidates using AI model...",
-      "Finalizing results..."
-    ];
-
-    for (let i = 0; i < stages.length; i++) {
-      await new Promise(r => setTimeout(r, 1200));
-      setLogs(prev => [...prev, stages[i]]);
-      setProgress(((i + 1) / stages.length) * 100);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+      
+      // 1. Upload file to create dataset
+      setLogs(prev => [...prev, `Uploading ${files[0].name}...`]);
+      setProgress(20);
+      
+      const formData = new FormData();
+      formData.append("file", files[0]); // Just process the first file for now
+      
+      const uploadRes = await fetch(`${apiUrl}/datasets`, {
+        method: "POST",
+        body: formData,
+      });
+      
+      if (!uploadRes.ok) throw new Error("Failed to upload dataset");
+      
+      const dataset = await uploadRes.json();
+      setLogs(prev => [...prev, `Dataset #${dataset.id} created successfully.`]);
+      setProgress(50);
+      
+      // 2. Trigger detection pipeline
+      setLogs(prev => [...prev, "Launching ML detection pipeline..."]);
+      setProgress(70);
+      
+      const detectionRes = await fetch(`${apiUrl}/detection/run`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dataset_id: dataset.id,
+          fwhm: 3.0,
+          threshold_sigma: 5.0,
+          motion_threshold: 0.5,
+          min_persistence: 2,
+          enable_motion_detection: true,
+          enable_false_positive_filter: true
+        }),
+      });
+      
+      if (!detectionRes.ok) throw new Error("Failed to start detection pipeline");
+      
+      setLogs(prev => [...prev, "Pipeline launched! Redirecting to dashboard..."]);
+      setProgress(100);
+      
+      await new Promise(r => setTimeout(r, 1000));
+      router.push(`/datasets/${dataset.id}`);
+      
+    } catch (err: any) {
+      console.error(err);
+      setLogs(prev => [...prev, `ERROR: ${err.message}`]);
+      setIsUploading(false);
     }
-
-    await new Promise(r => setTimeout(r, 1000));
-    router.push("/datasets/demo-dataset");
   };
 
   return (

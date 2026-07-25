@@ -57,7 +57,7 @@ export function FloatingAssistant() {
 
       {/* Floating Chat Widget */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-[350px] sm:w-[400px] h-[500px] max-h-[80vh] bg-[#0a0a0a] border border-[#333] rounded-xl shadow-2xl flex flex-col z-50 overflow-hidden animate-slide-in-up">
+        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 w-auto sm:w-[400px] h-[450px] sm:h-[500px] max-h-[80vh] bg-[#0a0a0a] border border-[#333] rounded-xl shadow-2xl flex flex-col z-50 overflow-hidden animate-slide-in-up">
           {/* Header */}
           <div className="flex items-center justify-between p-3 border-b border-[#333] bg-[#000]">
             <div className="flex items-center gap-2">

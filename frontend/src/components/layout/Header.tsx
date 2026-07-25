@@ -50,7 +50,7 @@ export function Header({ onCommandOpen }: HeaderProps) {
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-4 text-sm font-medium">
+      <div className="flex items-center gap-2 sm:gap-4 text-sm font-medium">
         <button
           onClick={onCommandOpen}
           className="flex items-center gap-2 text-[#a1a1aa] hover:text-[#ededed] transition-colors"
@@ -59,16 +59,16 @@ export function Header({ onCommandOpen }: HeaderProps) {
           <span className="hidden sm:inline">Search</span>
         </button>
         
-        <Link href="/settings" className="text-[#a1a1aa] hover:text-[#ededed] transition-colors">
+        <Link href="/settings" className="text-[#a1a1aa] hover:text-[#ededed] transition-colors hidden sm:block">
           <Settings className="w-4 h-4" />
         </Link>
 
         <Link 
           href="/pipeline" 
-          className="flex items-center gap-1.5 bg-[#ededed] text-black px-3 py-1.5 rounded-md hover:bg-white transition-colors ml-2"
+          className="flex items-center gap-1.5 bg-[#ededed] text-black px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-md hover:bg-white transition-colors ml-1 sm:ml-2"
         >
           <Plus className="w-4 h-4" />
-          New Analysis
+          <span className="hidden sm:inline">New Analysis</span>
         </Link>
       </div>
     </header>

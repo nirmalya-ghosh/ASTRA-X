@@ -1,96 +1,75 @@
-"use client";
-
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Search,
-  Bell,
-  Cpu,
-  ChevronRight,
-} from "lucide-react";
+import { Search, ChevronRight, Settings, Plus, Sparkles } from "lucide-react";
 
 interface HeaderProps {
   onCommandOpen: () => void;
 }
 
-const pathLabels: Record<string, string> = {
-  "/": "Dashboard",
-  "/datasets": "Dataset Manager",
-  "/mission-control": "Mission Control",
-  "/detection": "Detection Workspace",
-  "/blink": "Blink Comparator",
-  "/candidates": "Candidate Explorer",
-  "/processing": "Image Processing",
-  "/assistant": "AI Assistant",
-  "/inspector": "Object Inspector",
-  "/motion": "Motion Analytics",
-  "/heatmaps": "Heatmaps",
-  "/statistics": "Statistics",
-  "/timeline": "Timeline",
-  "/export": "Export Center",
-  "/settings": "Settings",
-  "/logs": "Logs",
-  "/developer": "Developer Console",
-};
-
 export function Header({ onCommandOpen }: HeaderProps) {
   const pathname = usePathname();
-  const pageTitle = pathLabels[pathname] || "AstraX AI";
 
   // Build breadcrumb
   const segments = pathname.split("/").filter(Boolean);
   const breadcrumbs = [
-    { label: "AstraX", href: "/" },
+    { label: "astrax", href: "/" },
     ...segments.map((seg, i) => ({
-      label: seg.charAt(0).toUpperCase() + seg.slice(1).replace("-", " "),
+      label: seg.replace("-", " "),
       href: "/" + segments.slice(0, i + 1).join("/"),
     })),
   ];
 
   return (
-    <header className="h-14 flex items-center justify-between px-6 border-b border-neon-500/10 glass-subtle shrink-0">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 text-sm">
-        {breadcrumbs.map((crumb, i) => (
-          <span key={crumb.href} className="flex items-center gap-1.5">
-            {i > 0 && <ChevronRight className="w-3 h-3 text-space-600" />}
-            <span
-              className={
-                i === breadcrumbs.length - 1
-                  ? "text-space-100 font-medium"
-                  : "text-space-500"
-              }
-            >
-              {crumb.label}
+    <header className="h-14 flex items-center justify-between px-6 border-b border-[#333] shrink-0 bg-[#000]">
+      <div className="flex items-center gap-4">
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2 mr-2">
+          <div className="w-6 h-6 rounded bg-[#ededed] flex items-center justify-center">
+            <Sparkles className="w-3.5 h-3.5 text-black" />
+          </div>
+        </Link>
+
+        {/* Breadcrumbs */}
+        <div className="flex items-center gap-1.5 text-sm font-medium">
+          {breadcrumbs.map((crumb, i) => (
+            <span key={crumb.href} className="flex items-center gap-1.5">
+              {i > 0 && <span className="text-[#333] tracking-[-.1em]">/</span>}
+              <Link 
+                href={crumb.href}
+                className={
+                  i === breadcrumbs.length - 1
+                    ? "text-[#ededed]"
+                    : "text-[#a1a1aa] hover:text-[#ededed] transition-colors"
+                }
+              >
+                {crumb.label}
+              </Link>
             </span>
-          </span>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-3">
-        {/* Search */}
+      <div className="flex items-center gap-4 text-sm font-medium">
         <button
           onClick={onCommandOpen}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg glass-subtle hover:border-neon-500/30 transition-colors text-space-400 hover:text-space-200 text-xs"
+          className="flex items-center gap-2 text-[#a1a1aa] hover:text-[#ededed] transition-colors"
         >
-          <Search className="w-3.5 h-3.5" />
-          <span>Search...</span>
-          <kbd className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-space-800 text-space-500 border border-space-700">
-            ⌘K
-          </kbd>
+          <Search className="w-4 h-4" />
+          <span className="hidden sm:inline">Search</span>
         </button>
+        
+        <Link href="/settings" className="text-[#a1a1aa] hover:text-[#ededed] transition-colors">
+          <Settings className="w-4 h-4" />
+        </Link>
 
-        {/* Processing Status */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg glass-subtle text-xs">
-          <Cpu className="w-3.5 h-3.5 text-emerald-glow animate-glow" />
-          <span className="text-space-400">Idle</span>
-        </div>
-
-        {/* Notifications */}
-        <button className="relative p-2 rounded-lg hover:bg-space-800/50 transition-colors text-space-400 hover:text-space-200">
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-neon-500" />
-        </button>
+        <Link 
+          href="/pipeline" 
+          className="flex items-center gap-1.5 bg-[#ededed] text-black px-3 py-1.5 rounded-md hover:bg-white transition-colors ml-2"
+        >
+          <Plus className="w-4 h-4" />
+          New Analysis
+        </Link>
       </div>
     </header>
   );

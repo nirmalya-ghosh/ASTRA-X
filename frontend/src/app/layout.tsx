@@ -1,31 +1,22 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const geist = Geist({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-geist",
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const geistMono = Geist_Mono({
   subsets: ["latin"],
-  variable: "--font-mono",
+  variable: "--font-geist-mono",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "AstraX AI — Astronomical Image Analysis Platform",
-  description:
-    "Research-grade asteroid detection & astronomical image analysis. Ingest FITS datasets, detect moving celestial candidates, and generate observation reports.",
-  keywords: [
-    "astronomy",
-    "FITS",
-    "asteroid detection",
-    "image analysis",
-    "astronomical research",
-    "moving object detection",
-  ],
+  title: "AstraX AI — Astronomical Analysis",
+  description: "Minimalist asteroid detection & astronomical image analysis.",
 };
 
 import { Providers } from "./providers";
@@ -37,10 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body
-        className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}
-      >
-        <div className="starfield" />
+      <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased bg-black text-[#ededed]`}>
         <Providers>
           {children}
         </Providers>

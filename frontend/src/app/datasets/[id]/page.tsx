@@ -1,20 +1,62 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, use } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { Users, Activity, Telescope, ScanEye, Download, Star } from "lucide-react";
+import { Users, Activity, Telescope, ScanEye, Download, Star, Loader2 } from "lucide-react";
 import Link from "next/link";
 
-export default function DatasetResultsPage() {
+interface Candidate {
+  id: number;
+  confidence_score: number;
+  ra: number | null;
+  dec: number | null;
+  flux: number | null;
+  motion_speed: number | null;
+  classification: string;
+}
+
+export default function DatasetResultsPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const datasetId = resolvedParams.id;
   const [activeTab, setActiveTab] = useState("candidates");
+  const [datasetName, setDatasetName] = useState(`Dataset #${datasetId}`);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+        
+        // Fetch dataset name
+        const dsRes = await fetch(`${apiUrl}/datasets/${datasetId}`);
+        if (dsRes.ok) {
+          const dsData = await dsRes.json();
+          if (dsData.name) setDatasetName(dsData.name);
+        }
+
+        // Fetch candidates
+        const candRes = await fetch(`${apiUrl}/candidates?dataset_id=${datasetId}&limit=50&sort_by=confidence_score&sort_desc=true`);
+        if (candRes.ok) {
+          const candData = await candRes.json();
+          setCandidates(candData.candidates || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch data", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchData();
+  }, [datasetId]);
 
   return (
     <AppShell>
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-[#ededed]">Dataset_2026_07.fits</h1>
-            <p className="text-[#a1a1aa] mt-1 text-sm">Processed 2 minutes ago • 12 Candidates found</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-[#ededed]">{datasetName}</h1>
+            <p className="text-[#a1a1aa] mt-1 text-sm">Dataset #{datasetId} • {candidates.length} Candidates found</p>
           </div>
           <div className="flex items-center gap-3">
             <button className="flex items-center gap-2 vercel-button-secondary px-4 py-2 text-sm">
@@ -44,20 +86,38 @@ export default function DatasetResultsPage() {
         {activeTab === "candidates" && (
           <div className="space-y-4">
             <h2 className="text-sm font-medium text-[#ededed]">High Confidence Asteroids</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="vercel-card p-4 flex gap-4">
-                  <div className="w-16 h-16 bg-[#111] rounded border border-[#333] flex items-center justify-center shrink-0">
-                    <Star className="w-6 h-6 text-[#71717a]" />
+            
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-[#71717a]" />
+              </div>
+            ) : candidates.length === 0 ? (
+              <div className="text-center py-12 border border-dashed border-[#333] rounded-lg bg-[#0a0a0a]">
+                <Star className="w-8 h-8 text-[#333] mx-auto mb-3" />
+                <p className="text-[#a1a1aa] text-sm">No significant asteroid candidates detected in this dataset.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {candidates.map((candidate, i) => (
+                  <div key={candidate.id} className="vercel-card p-4 flex gap-4 hover:border-[#888] transition-colors cursor-default">
+                    <div className="w-16 h-16 bg-[#111] rounded border border-[#333] flex items-center justify-center shrink-0">
+                      <Star className={`w-6 h-6 ${candidate.confidence_score > 0.8 ? 'text-white' : 'text-[#71717a]'}`} />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-[#ededed] text-sm">Candidate AST-{candidate.id}</h3>
+                      <p className="text-xs text-[#a1a1aa] mt-1">
+                        Confidence: {(candidate.confidence_score * 100).toFixed(1)}%
+                      </p>
+                      <div className="text-xs text-[#71717a] mt-1 space-y-0.5">
+                        <p>RA: {candidate.ra ? candidate.ra.toFixed(4) : 'N/A'} • DEC: {candidate.dec ? candidate.dec.toFixed(4) : 'N/A'}</p>
+                        {candidate.motion_speed && <p>Speed: {candidate.motion_speed.toFixed(2)} px/hr</p>}
+                        {candidate.flux && <p>Flux: {candidate.flux.toFixed(2)}</p>}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-medium text-[#ededed] text-sm">Candidate {i}</h3>
-                    <p className="text-xs text-[#a1a1aa] mt-1">Confidence: {98 - (i * 2)}%</p>
-                    <p className="text-xs text-[#71717a] mt-1">RA: 12h 34m • DEC: +45° 23'</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

@@ -1,0 +1,389 @@
+@import "tailwindcss";
+
+/* ══════════════════════════════════════════════════════════════
+   AstraX AI — Observatory Design System
+   Deep space aesthetic with neon blue accents & glassmorphism
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Custom Theme Tokens ───────────────────────────────────── */
+@theme {
+  --color-space-950: #030712;
+  --color-space-900: #0a0f1e;
+  --color-space-850: #0d1326;
+  --color-space-800: #111827;
+  --color-space-700: #1a2035;
+  --color-space-600: #232b42;
+  --color-space-500: #374151;
+  --color-space-400: #4b5563;
+  --color-space-300: #9ca3af;
+  --color-space-200: #d1d5db;
+  --color-space-100: #e5e7eb;
+  --color-space-50: #f3f4f6;
+
+  /* Neon blue accent palette */
+  --color-neon-50: #eef6ff;
+  --color-neon-100: #d9eaff;
+  --color-neon-200: #bcd9ff;
+  --color-neon-300: #8ec4ff;
+  --color-neon-400: #59a5ff;
+  --color-neon-500: #3b82f6;
+  --color-neon-600: #2563eb;
+  --color-neon-700: #1d4ed8;
+  --color-neon-800: #1e40af;
+  --color-neon-900: #1e3a8a;
+
+  /* Accent gradients */
+  --color-cyan-glow: #22d3ee;
+  --color-violet-glow: #8b5cf6;
+  --color-emerald-glow: #10b981;
+  --color-amber-glow: #f59e0b;
+  --color-rose-glow: #f43f5e;
+
+  /* Functional colors */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #3b82f6;
+}
+
+/* ── Base Styles ───────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(59, 130, 246, 0.3) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.3);
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.5);
+}
+
+::selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: #fff;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--color-space-950);
+  color: var(--color-space-100);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+/* ── Glassmorphism ─────────────────────────────────────────── */
+.glass {
+  background: rgba(10, 15, 30, 0.6);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.glass-subtle {
+  background: rgba(10, 15, 30, 0.4);
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  border: 1px solid rgba(59, 130, 246, 0.08);
+}
+
+.glass-prominent {
+  background: rgba(10, 15, 30, 0.8);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  box-shadow:
+    0 0 20px rgba(59, 130, 246, 0.08),
+    0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.glass-card {
+  background: rgba(17, 24, 39, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(59, 130, 246, 0.12);
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow:
+    0 0 15px rgba(59, 130, 246, 0.1),
+    0 4px 20px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+/* ── Neon Glow Effects ─────────────────────────────────────── */
+.neon-glow {
+  box-shadow:
+    0 0 5px rgba(59, 130, 246, 0.3),
+    0 0 20px rgba(59, 130, 246, 0.1);
+}
+
+.neon-glow-strong {
+  box-shadow:
+    0 0 5px rgba(59, 130, 246, 0.4),
+    0 0 20px rgba(59, 130, 246, 0.2),
+    0 0 40px rgba(59, 130, 246, 0.1);
+}
+
+.neon-text {
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+.neon-border {
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.15);
+}
+
+/* ── Animations ────────────────────────────────────────────── */
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slide-in-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-glow { animation: glow-pulse 3s ease-in-out infinite; }
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-slide-in-right { animation: slide-in-right 0.3s ease-out; }
+.animate-slide-in-up { animation: slide-in-up 0.4s ease-out; }
+.animate-fade-in { animation: fade-in 0.3s ease-out; }
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(59, 130, 246, 0.1) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+/* ── Status Indicators ─────────────────────────────────────── */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+}
+
+.status-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.status-dot-success {
+  background: var(--color-success);
+}
+.status-dot-success::after {
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-dot-warning {
+  background: var(--color-warning);
+}
+.status-dot-warning::after {
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.status-dot-danger {
+  background: var(--color-danger);
+}
+.status-dot-danger::after {
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.status-dot-info {
+  background: var(--color-info);
+}
+.status-dot-info::after {
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* ── Star Field Background ─────────────────────────────────── */
+.starfield {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(34, 211, 238, 0.02) 0%, transparent 50%),
+    var(--color-space-950);
+}
+
+.starfield::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1px 1px at 30% 70%, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 50% 40%, rgba(255,255,255,0.2), transparent),
+    radial-gradient(1px 1px at 70% 10%, rgba(255,255,255,0.35), transparent),
+    radial-gradient(1px 1px at 90% 60%, rgba(255,255,255,0.25), transparent),
+    radial-gradient(1.5px 1.5px at 15% 85%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 45% 15%, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 85% 45%, rgba(255,255,255,0.2), transparent),
+    radial-gradient(1.5px 1.5px at 25% 55%, rgba(59,130,246,0.4), transparent),
+    radial-gradient(1px 1px at 65% 90%, rgba(139,92,246,0.3), transparent),
+    radial-gradient(1px 1px at 5% 50%, rgba(255,255,255,0.15), transparent),
+    radial-gradient(1px 1px at 35% 30%, rgba(255,255,255,0.1), transparent),
+    radial-gradient(1px 1px at 55% 75%, rgba(255,255,255,0.2), transparent),
+    radial-gradient(1px 1px at 75% 55%, rgba(255,255,255,0.25), transparent),
+    radial-gradient(1px 1px at 95% 25%, rgba(255,255,255,0.15), transparent);
+}
+
+/* ── Grid Background ───────────────────────────────────────── */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── Badge Variants ────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+.badge-success {
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.badge-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.badge-info {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.badge-neutral {
+  background: rgba(156, 163, 175, 0.1);
+  color: #d1d5db;
+  border: 1px solid rgba(156, 163, 175, 0.2);
+}
+
+/* ── Tooltip ───────────────────────────────────────────────── */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  background: rgba(10, 15, 30, 0.95);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: var(--color-space-200);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+  z-index: 100;
+}
+
+[data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+/* ── Transitions ───────────────────────────────────────────── */
+.transition-gpu {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
+}
+
+/* ── Focus Styles ──────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Utility: Code Font ────────────────────────────────────── */
+.font-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+}

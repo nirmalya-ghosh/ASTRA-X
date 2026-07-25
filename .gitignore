@@ -1,0 +1,31 @@
+# Node
+node_modules/
+dist/
+.next/
+frontend/.next/
+frontend/out/
+frontend/node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+.venv/
+engine/venv/
+backend/venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Databases and Data
+*.sqlite3
+data/
+backend/data/
+
+# OS
+.DS_Store
+Thumbs.db

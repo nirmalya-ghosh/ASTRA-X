@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "astrax-engine"
+version = "0.1.0"
+description = "Research-grade astronomy image analysis engine for FITS datasets"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "AstraX AI Team" },
+]
+
+dependencies = [
+    "numpy>=2.1.0",
+    "scipy>=1.14.0",
+    "astropy>=7.0.0",
+    "photutils>=2.0.0",
+    "opencv-python-headless>=4.10.0",
+    "scikit-image>=0.24.0",
+    "Pillow>=11.0.0",
+]
+
+[project.optional-dependencies]
+gpu = ["cupy-cuda12x>=13.0.0"]
+alignment = ["astroalign>=2.5.0"]
+cosmic = ["astroscrappy>=1.2.0"]
+jit = ["numba>=0.60.0"]
+all = [
+    "astroalign>=2.5.0",
+    "astroscrappy>=1.2.0",
+    "numba>=0.60.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["astrax_engine*"]

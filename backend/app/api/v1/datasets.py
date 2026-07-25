@@ -38,14 +38,19 @@ async def _index_dataset(dataset_id: int, source_path: str):
             dataset.status = "indexing"
             await session.commit()
 
-            # Scan for FITS files
-            fits_extensions = {".fits", ".fit", ".fts", ".fits.gz", ".fit.gz"}
+            # Scan for files
             source = Path(source_path)
-            fits_files = []
+            target_files = []
+
+            # Supported extensions mapping
+            fits_exts = {".fits", ".fit", ".fts", ".fits.gz", ".fit.gz"}
+            img_exts = {".jpg", ".jpeg", ".png", ".tif", ".tiff"}
+            data_exts = {".csv", ".json"}
+            all_exts = fits_exts | img_exts | data_exts
 
             if source.is_file():
-                if any(source.name.lower().endswith(ext) for ext in fits_extensions):
-                    fits_files.append(source)
+                if source.suffix.lower() in all_exts:
+                    target_files.append(source)
                 elif source.suffix.lower() == ".zip":
                     # Extract ZIP
                     import zipfile
@@ -55,26 +60,30 @@ async def _index_dataset(dataset_id: int, source_path: str):
                         zf.extractall(extract_dir)
                     for root, _, files in os.walk(extract_dir):
                         for f in files:
-                            if any(f.lower().endswith(ext) for ext in fits_extensions):
-                                fits_files.append(Path(root) / f)
+                            if Path(f).suffix.lower() in all_exts:
+                                target_files.append(Path(root) / f)
             elif source.is_dir():
                 for root, _, files in os.walk(source):
                     for f in files:
-                        if any(f.lower().endswith(ext) for ext in fits_extensions):
-                            fits_files.append(Path(root) / f)
+                        if Path(f).suffix.lower() in all_exts:
+                            target_files.append(Path(root) / f)
 
-            fits_files.sort(key=lambda p: p.name)
-            total_size = sum(f.stat().st_size for f in fits_files)
+            target_files.sort(key=lambda p: p.name)
+            total_size = sum(f.stat().st_size for f in target_files)
 
-            # Parse headers and create frame records
             try:
                 from astropy.io import fits as astropy_fits
                 has_astropy = True
             except ImportError:
                 has_astropy = False
-                logger.warning("astropy not installed, skipping header parsing")
 
-            for idx, fpath in enumerate(fits_files):
+            try:
+                from PIL import Image
+                has_pil = True
+            except ImportError:
+                has_pil = False
+
+            for idx, fpath in enumerate(target_files):
                 frame = Frame(
                     dataset_id=dataset_id,
                     filename=fpath.name,
@@ -82,7 +91,11 @@ async def _index_dataset(dataset_id: int, source_path: str):
                     frame_index=idx,
                 )
 
-                if has_astropy:
+                ext = fpath.suffix.lower()
+                header_dict = {"file_type": "unknown"}
+
+                if ext in fits_exts and has_astropy:
+                    header_dict["file_type"] = "fits"
                     try:
                         with astropy_fits.open(str(fpath), memmap=True) as hdul:
                             hdr = hdul[0].header
@@ -101,8 +114,6 @@ async def _index_dataset(dataset_id: int, source_path: str):
                             frame.ra = hdr.get("RA") or hdr.get("CRVAL1")
                             frame.dec = hdr.get("DEC") or hdr.get("CRVAL2")
 
-                            # Store full header as JSON
-                            header_dict = {}
                             for key in hdr.keys():
                                 if key and key != "COMMENT" and key != "HISTORY":
                                     try:
@@ -113,26 +124,52 @@ async def _index_dataset(dataset_id: int, source_path: str):
                                             header_dict[key] = str(val)
                                     except Exception:
                                         pass
-                            frame.header_json = header_dict
                     except Exception as e:
                         logger.error(f"Error reading FITS header for {fpath}: {e}")
 
+                elif ext in img_exts and has_pil:
+                    header_dict["file_type"] = "image"
+                    try:
+                        with Image.open(fpath) as img:
+                            frame.width, frame.height = img.size
+                            header_dict["format"] = img.format
+                            header_dict["mode"] = img.mode
+                            exif = img.getexif()
+                            if exif:
+                                for k, v in exif.items():
+                                    header_dict[f"exif_{k}"] = str(v)
+                    except Exception as e:
+                        logger.error(f"Error reading image metadata for {fpath}: {e}")
+                
+                elif ext in data_exts:
+                    header_dict["file_type"] = "data"
+                    try:
+                        file_size = fpath.stat().st_size
+                        header_dict["size_bytes"] = file_size
+                        if ext == ".csv":
+                            with open(fpath, 'r', encoding='utf-8') as f:
+                                first_line = f.readline()
+                                header_dict["columns"] = first_line.strip().split(',')
+                    except Exception as e:
+                        logger.error(f"Error reading data file metadata for {fpath}: {e}")
+
+                frame.header_json = header_dict
                 session.add(frame)
 
             # Update dataset
-            dataset.file_count = len(fits_files)
+            dataset.file_count = len(target_files)
             dataset.total_size_bytes = total_size
-            dataset.status = "ready" if fits_files else "empty"
+            dataset.status = "ready" if target_files else "empty"
 
             # Collect metadata
             dataset.metadata_json = {
-                "file_count": len(fits_files),
+                "file_count": len(target_files),
                 "total_size_mb": round(total_size / (1024 * 1024), 2),
-                "extensions_found": list(set(f.suffix.lower() for f in fits_files)),
+                "extensions_found": list(set(f.suffix.lower() for f in target_files)),
             }
 
             await session.commit()
-            logger.info(f"Dataset {dataset_id} indexed: {len(fits_files)} frames, {total_size / 1024 / 1024:.1f} MB")
+            logger.info(f"Dataset {dataset_id} indexed: {len(target_files)} files, {total_size / 1024 / 1024:.1f} MB")
 
     except Exception as e:
         logger.error(f"Error indexing dataset {dataset_id}: {e}")

@@ -14,9 +14,12 @@ export default function PipelineWizard() {
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const droppedFiles = Array.from(e.dataTransfer.files).filter(f => 
-      f.name.toLowerCase().endsWith('.fits') || f.name.toLowerCase().endsWith('.fts')
-    );
+    const droppedFiles = Array.from(e.dataTransfer.files).filter(f => {
+      const name = f.name.toLowerCase();
+      return name.endsWith('.fits') || name.endsWith('.fts') || 
+             name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png') ||
+             name.endsWith('.csv') || name.endsWith('.json');
+    });
     if (droppedFiles.length > 0) {
       setFiles(prev => [...prev, ...droppedFiles]);
     }
@@ -65,14 +68,14 @@ export default function PipelineWizard() {
               <UploadCloud className="w-5 h-5 text-[#ededed]" />
             </div>
             <h3 className="text-[#ededed] font-medium mb-1">Drag and drop datasets here</h3>
-            <p className="text-sm text-[#71717a] mb-6">Supports .fits and .fts file formats</p>
+            <p className="text-sm text-[#71717a] mb-6">Supports FITS, Images (JPG/PNG), CSV, and JSON data</p>
             
             <label className="cursor-pointer vercel-button-primary px-4 py-2 inline-flex items-center text-sm">
               <span>Select Files</span>
               <input 
                 type="file" 
                 multiple 
-                accept=".fits,.fts" 
+                accept=".fits,.fts,.jpg,.jpeg,.png,.csv,.json" 
                 className="hidden"
                 onChange={(e) => {
                   if (e.target.files) {

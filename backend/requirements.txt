@@ -19,6 +19,7 @@ pydantic-settings>=2.6.0
 celery[redis]>=5.4.0
 
 # Astronomy Engine
+-e ../engine
 astropy>=7.0.0
 photutils>=2.0.0
 astroalign>=2.5.0

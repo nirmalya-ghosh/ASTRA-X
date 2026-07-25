@@ -13,12 +13,12 @@ AstraX AI is a professional astronomical image analysis platform that helps rese
 
 - **FITS Dataset Management** — Import, index, and browse FITS files with automatic header extraction
 - **Advanced Image Processing** — Calibration, noise reduction, enhancement, and image registration
-- **Multi-Algorithm Detection** — DAOStarFinder, IRAFStarFinder, optical flow, frame differencing
+- **Multi-Algorithm Detection** — DAOStarFinder, IRAFStarFinder, **OpenCV HOG & Adaptive Thresholding**, **Isolation Forests** (for tabular data)
 - **Motion Analysis** — Lucas-Kanade, Farneback optical flow, trajectory fitting
-- **False Positive Filtering** — Cosmic ray, hot pixel, satellite streak, and artifact rejection
+- **False Positive Filtering** — **DBSCAN Spatial Clustering**, cosmic ray, hot pixel, and artifact rejection
 - **Confidence Ranking** — Multi-factor scoring with motion consistency, SNR, and persistence
 - **Blink Comparator** — Rapid frame alternation for visual detection
-- **AI Assistant** — LLM-powered explanations and report generation (Gemini, OpenAI, Anthropic, OpenRouter)
+- **Omni-AI Assistant** — LLM-powered classifications, explanations and generation (**DeepSeek, Grok, Gemini, OpenAI, Anthropic, OpenRouter**)
 - **Export Center** — CSV, JSON, PDF reports, annotated images, session archives
 - **Observatory UI** — Deep space aesthetic with glassmorphism, neon accents, and smooth animations
 
@@ -87,9 +87,9 @@ astrax-ai/
 |---|---|
 | Frontend | Next.js 16, TypeScript, Tailwind CSS, Framer Motion, Zustand, Recharts |
 | Backend | FastAPI, SQLAlchemy (async), Pydantic v2, Celery |
-| Engine | astropy, photutils, OpenCV, scikit-image, NumPy, SciPy |
+| Engine | astropy, photutils, OpenCV, **scikit-learn** (Isolation Forests, DBSCAN), scikit-image, NumPy, SciPy |
 | Database | SQLite (local) / PostgreSQL (production) |
-| AI | Gemini, OpenAI, Anthropic, OpenRouter |
+| AI | **DeepSeek, Grok, Gemini, OpenAI, Anthropic, OpenRouter** |
 | Infrastructure | Docker, Redis, Makefile |
 
 ## 📡 API Documentation
@@ -103,11 +103,12 @@ Once the backend is running, visit:
 1. **Import Dataset** → Scan and index FITS files
 2. **Calibrate Frames** → Flat field, dark frame, bias correction
 3. **Align Images** → Star-based registration
-4. **Detect Sources** → DAOStarFinder / IRAFStarFinder
+4. **Detect Sources** → DAOStarFinder / IRAFStarFinder / **Isolation Forests (Tabular)** / **OpenCV HOG (Vision)**
 5. **Analyze Motion** → Optical flow, frame differencing
-6. **Filter Artifacts** → Cosmic rays, hot pixels, streaks
-7. **Rank Candidates** → Multi-factor confidence scoring
-8. **Human Review** → Confirm, reject, or flag candidates
+6. **Filter Artifacts** → **DBSCAN Clustering**, cosmic rays, hot pixels
+7. **AI Fallback** → Routes undetected images/data to OpenRouter Vision/Data models
+8. **Rank Candidates** → Multi-factor confidence scoring
+9. **Human Review** → Confirm, reject, or flag candidates
 9. **Export Report** → PDF, CSV, JSON, annotated images
 
 ## ⚙️ Configuration
@@ -118,9 +119,10 @@ All settings are configured via environment variables (prefix: `ASTRAX_`). See `
 
 ```bash
 # In your .env file:
-ASTRAX_LLM_PROVIDER=gemini          # or openai, anthropic, openrouter
-ASTRAX_LLM_MODEL=gemini-2.0-flash
-ASTRAX_LLM_API_KEY=your-api-key
+ASTRAX_LLM_PROVIDER=openrouter      # or deepseek, grok, openai, gemini, anthropic
+ASTRAX_LLM_OPENROUTER_API_KEY=your-api-key
+ASTRAX_LLM_DEEPSEEK_API_KEY=your-api-key
+ASTRAX_LLM_GROK_API_KEY=your-api-key
 ```
 
 ## 🧪 Testing

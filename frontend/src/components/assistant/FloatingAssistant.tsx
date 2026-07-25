@@ -5,6 +5,7 @@ import { Sparkles, X, Send, Loader2 } from "lucide-react";
 
 export function FloatingAssistant() {
   const [isOpen, setIsOpen] = useState(false);
+  const [provider, setProvider] = useState("openrouter");
   const [messages, setMessages] = useState<{ role: "user" | "ai"; content: string }[]>([
     { role: "ai", content: "Hi. I'm AstraX AI. Ask me to explain a dataset, identify a candidate, or walk you through the detection process." }
   ]);
@@ -25,13 +26,15 @@ export function FloatingAssistant() {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/assistant/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage }),
+        body: JSON.stringify({ message: userMessage, provider }),
       });
       
       const data = await response.json();
       
       if (data.response) {
         setMessages(prev => [...prev, { role: "ai", content: data.response }]);
+      } else if (data.content) {
+        setMessages(prev => [...prev, { role: "ai", content: data.content }]);
       } else {
         setMessages(prev => [...prev, { role: "ai", content: "I encountered an error connecting to the intelligence engine." }]);
       }
@@ -56,14 +59,28 @@ export function FloatingAssistant() {
       {isOpen && (
         <div className="fixed bottom-6 right-6 w-[350px] sm:w-[400px] h-[500px] max-h-[80vh] bg-[#0a0a0a] border border-[#333] rounded-xl shadow-2xl flex flex-col z-50 overflow-hidden animate-slide-in-up">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-[#333] bg-[#000]">
+          <div className="flex items-center justify-between p-3 border-b border-[#333] bg-[#000]">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-[#ededed]" />
               <span className="font-medium text-sm text-[#ededed]">AstraX Assistant</span>
             </div>
-            <button onClick={() => setIsOpen(false)} className="text-[#a1a1aa] hover:text-[#ededed] transition-colors">
-              <X className="w-4 h-4" />
-            </button>
+            
+            <div className="flex items-center gap-3">
+              <select 
+                value={provider} 
+                onChange={(e) => setProvider(e.target.value)}
+                className="bg-[#111] border border-[#333] text-xs text-[#ededed] rounded px-2 py-1 outline-none focus:border-[#666]"
+              >
+                <option value="openrouter">OpenRouter (Claude 3.5)</option>
+                <option value="deepseek">DeepSeek</option>
+                <option value="openai">OpenAI (GPT-4o)</option>
+                <option value="gemini">Google Gemini</option>
+                <option value="grok">xAI Grok</option>
+              </select>
+              <button onClick={() => setIsOpen(false)} className="text-[#a1a1aa] hover:text-[#ededed] transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}

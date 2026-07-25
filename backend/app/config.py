@@ -56,10 +56,14 @@ class Settings(BaseSettings):
     celery_result_backend: Optional[str] = None
 
     # LLM Settings (for AI Assistant)
-    llm_provider: Optional[str] = "openrouter"  # gemini, openai, anthropic, openrouter
+    llm_provider: Optional[str] = "openrouter"  # openrouter, openai, gemini, deepseek, grok, anthropic
     llm_model: Optional[str] = None
-    llm_api_key: Optional[str] = None
-    llm_base_url: Optional[str] = None
+    llm_openrouter_api_key: Optional[str] = None
+    llm_openai_api_key: Optional[str] = None
+    llm_gemini_api_key: Optional[str] = None
+    llm_deepseek_api_key: Optional[str] = None
+    llm_grok_api_key: Optional[str] = None
+    llm_anthropic_api_key: Optional[str] = None
 
     # Security
     secret_key: str = "astrax-dev-secret-change-in-production"

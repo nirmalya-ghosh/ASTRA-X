@@ -169,6 +169,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1)
     session_id: Optional[str] = None
     context: Optional[dict] = None  # e.g., current dataset/candidate info
+    provider: Optional[str] = None  # openrouter, deepseek, openai, gemini, grok
 
 
 class ChatResponse(BaseModel):

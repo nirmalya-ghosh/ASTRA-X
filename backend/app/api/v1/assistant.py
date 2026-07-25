@@ -36,7 +36,7 @@ async def chat(
 
     # Generate response via LLM
     try:
-        response_text = await _generate_response(body.message, session_id, body.context)
+        response_text = await _generate_response(body.message, session_id, body.context, body.provider)
     except Exception as e:
         logger.error(f"LLM error: {e}")
         response_text = (
@@ -144,28 +144,35 @@ async def get_chat_history(
 
 
 async def _generate_response(
-    message: str, session_id: str, context: dict = None
+    message: str, session_id: str, context: dict = None, provider: str = None
 ) -> str:
     """Generate an LLM response using the configured provider."""
-    if not settings.llm_provider or not settings.llm_api_key:
-        return (
-            "AI Assistant is not configured. Please set your LLM provider and API key "
-            "in Settings → AI Assistant. Supported providers: Gemini, OpenAI, Anthropic, OpenRouter."
-        )
+    # Use requested provider, or fallback to default
+    active_provider = provider or settings.llm_provider
 
     try:
-        if settings.llm_provider == "gemini":
+        if active_provider == "gemini":
+            if not settings.llm_gemini_api_key: return "Gemini API key missing."
             return await _call_gemini(message, context)
-        elif settings.llm_provider == "openai":
+        elif active_provider == "openai":
+            if not settings.llm_openai_api_key: return "OpenAI API key missing."
             return await _call_openai(message, context)
-        elif settings.llm_provider == "anthropic":
+        elif active_provider == "anthropic":
+            if not settings.llm_anthropic_api_key: return "Anthropic API key missing."
             return await _call_anthropic(message, context)
-        elif settings.llm_provider == "openrouter":
+        elif active_provider == "openrouter":
+            if not settings.llm_openrouter_api_key: return "OpenRouter API key missing."
             return await _call_openrouter(message, context)
+        elif active_provider == "deepseek":
+            if not settings.llm_deepseek_api_key: return "DeepSeek API key missing."
+            return await _call_deepseek(message, context)
+        elif active_provider == "grok":
+            if not settings.llm_grok_api_key: return "Grok API key missing."
+            return await _call_grok(message, context)
         else:
-            return f"Unknown LLM provider: {settings.llm_provider}"
-    except ImportError as e:
-        return f"LLM provider library not installed: {str(e)}"
+            return f"Unknown LLM provider: {active_provider}"
+    except Exception as e:
+        return f"Provider {active_provider} failed: {str(e)}"
 
 
 async def _call_gemini(message: str, context: dict = None) -> str:
@@ -224,6 +231,44 @@ async def _call_openrouter(message: str, context: dict = None) -> str:
 
     response = await client.chat.completions.create(
         model=settings.llm_model or "anthropic/claude-sonnet-4-20250514",
+        messages=[
+            {"role": "system", "content": _get_system_prompt(context)},
+            {"role": "user", "content": message},
+        ],
+    )
+    return response.choices[0].message.content
+
+
+async def _call_deepseek(message: str, context: dict = None) -> str:
+    """Call DeepSeek API."""
+    from openai import AsyncOpenAI
+
+    client = AsyncOpenAI(
+        api_key=settings.llm_deepseek_api_key,
+        base_url="https://api.deepseek.com",
+    )
+
+    response = await client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {"role": "system", "content": _get_system_prompt(context)},
+            {"role": "user", "content": message},
+        ],
+    )
+    return response.choices[0].message.content
+
+
+async def _call_grok(message: str, context: dict = None) -> str:
+    """Call Grok (xAI) API."""
+    from openai import AsyncOpenAI
+
+    client = AsyncOpenAI(
+        api_key=settings.llm_grok_api_key,
+        base_url="https://api.x.ai/v1",
+    )
+
+    response = await client.chat.completions.create(
+        model="grok-beta",
         messages=[
             {"role": "system", "content": _get_system_prompt(context)},
             {"role": "user", "content": message},

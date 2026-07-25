@@ -58,10 +58,28 @@ async def _run_detection_pipeline(
     from app.db.models import async_session
 
     try:
+        import asyncio
         async with async_session() as session:
             task = await session.get(ProcessingTask, task_id)
             task.status = "running"
             task.started_at = datetime.utcnow()
+            task.message = "Waiting for dataset indexing to complete..."
+            await session.commit()
+            
+            # Wait for the background dataset indexing to complete
+            max_wait_seconds = 120
+            for _ in range(max_wait_seconds):
+                dataset = await session.get(Dataset, dataset_id)
+                if dataset.status == "ready":
+                    break
+                elif dataset.status == "error":
+                    task.status = "failed"
+                    task.error_message = "Dataset indexing failed"
+                    await session.commit()
+                    return
+                await asyncio.sleep(1.0)
+                await session.refresh(dataset)
+
             task.message = "Loading frames..."
             await session.commit()
 
@@ -75,7 +93,7 @@ async def _run_detection_pipeline(
 
             if not frames:
                 task.status = "failed"
-                task.error_message = "No frames found in dataset"
+                task.error_message = "No frames found in dataset. Ensure the dataset finished indexing correctly."
                 await session.commit()
                 return
 

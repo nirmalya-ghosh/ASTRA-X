@@ -179,7 +179,7 @@ async def _call_gemini(message: str, context: dict = None) -> str:
     """Call Google Gemini API."""
     import google.generativeai as genai
 
-    genai.configure(api_key=settings.llm_api_key)
+    genai.configure(api_key=settings.llm_gemini_api_key)
     model = genai.GenerativeModel(settings.llm_model or "gemini-2.0-flash")
 
     system_prompt = _get_system_prompt(context)
@@ -192,7 +192,7 @@ async def _call_openai(message: str, context: dict = None) -> str:
     from openai import AsyncOpenAI
 
     client = AsyncOpenAI(
-        api_key=settings.llm_api_key,
+        api_key=settings.llm_openai_api_key,
         base_url=settings.llm_base_url or "https://api.openai.com/v1",
     )
 
@@ -210,7 +210,7 @@ async def _call_anthropic(message: str, context: dict = None) -> str:
     """Call Anthropic API."""
     import anthropic
 
-    client = anthropic.AsyncAnthropic(api_key=settings.llm_api_key)
+    client = anthropic.AsyncAnthropic(api_key=settings.llm_anthropic_api_key)
     response = await client.messages.create(
         model=settings.llm_model or "claude-sonnet-4-20250514",
         max_tokens=2048,
@@ -225,7 +225,7 @@ async def _call_openrouter(message: str, context: dict = None) -> str:
     from openai import AsyncOpenAI
 
     client = AsyncOpenAI(
-        api_key=settings.llm_api_key,
+        api_key=settings.llm_openrouter_api_key,
         base_url="https://openrouter.ai/api/v1",
     )
 

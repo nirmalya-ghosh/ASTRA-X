@@ -187,8 +187,8 @@ async def _index_dataset(dataset_id: int, source_path: str):
 async def upload_dataset(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    name: str = Form(None),
-    description: str = Form(None),
+    name: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
     session: AsyncSession = Depends(get_session),
 ):
     """Upload a FITS file or ZIP archive."""

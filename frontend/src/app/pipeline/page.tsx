@@ -46,7 +46,10 @@ export default function PipelineWizard() {
         body: formData,
       });
       
-      if (!uploadRes.ok) throw new Error("Failed to upload dataset");
+      if (!uploadRes.ok) {
+        const errText = await uploadRes.text();
+        throw new Error(`Upload failed (${uploadRes.status}): ${errText}`);
+      }
       
       const dataset = await uploadRes.json();
       setLogs(prev => [...prev, `Dataset #${dataset.id} created successfully.`]);
@@ -72,7 +75,10 @@ export default function PipelineWizard() {
         }),
       });
       
-      if (!detectionRes.ok) throw new Error("Failed to start detection pipeline");
+      if (!detectionRes.ok) {
+        const errText = await detectionRes.text();
+        throw new Error(`Failed to start detection pipeline (${detectionRes.status}): ${errText}`);
+      }
       
       setLogs(prev => [...prev, "Pipeline launched! Redirecting to dashboard..."]);
       setProgress(100);

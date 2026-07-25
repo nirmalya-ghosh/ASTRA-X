@@ -24,45 +24,15 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - ASTRAX_DATABASE_URL=sqlite+aiosqlite:///./data/astrax.db
+      - ASTRAX_DATABASE_URL=postgresql+asyncpg://postgres:postgres@db.xxxxxxxxxxxx.supabase.co:5432/postgres
       - ASTRAX_DATA_DIR=/app/data
       - ASTRAX_UPLOAD_DIR=/app/data/uploads
       - ASTRAX_CACHE_DIR=/app/data/cache
       - ASTRAX_EXPORT_DIR=/app/data/exports
-      - ASTRAX_CELERY_BROKER_URL=redis://redis:6379/0
-      - ASTRAX_CELERY_RESULT_BACKEND=redis://redis:6379/0
       - ASTRAX_DEBUG=false
     volumes:
       - astrax-data:/app/data
-    depends_on:
-      - redis
-    restart: unless-stopped
-
-  # ── Celery Worker ───────────────────────────────────────────
-  worker:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    command: celery -A app.tasks worker --loglevel=info --concurrency=4
-    environment:
-      - ASTRAX_CELERY_BROKER_URL=redis://redis:6379/0
-      - ASTRAX_CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - ASTRAX_DATA_DIR=/app/data
-    volumes:
-      - astrax-data:/app/data
-    depends_on:
-      - redis
-    restart: unless-stopped
-
-  # ── Redis (Message Broker) ──────────────────────────────────
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
     restart: unless-stopped
 
 volumes:
   astrax-data:
-  redis-data:

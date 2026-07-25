@@ -40,8 +40,9 @@ Pillow>=11.0.0
 reportlab>=4.2.0
 
 # AI Service (optional - install as needed)
-# google-generativeai>=0.8.0
-# openai>=1.55.0
+# LLM Integrations
+openai>=1.55.0
+# anthropic>=0.39.0
 # anthropic>=0.39.0
 
 # Utilities

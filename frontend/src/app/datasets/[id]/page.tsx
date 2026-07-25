@@ -113,6 +113,36 @@ export default function DatasetResultsPage({ params }: { params: Promise<{ id: s
                         {candidate.motion_speed && <p>Speed: {candidate.motion_speed.toFixed(2)} px/hr</p>}
                         {candidate.flux && <p>Flux: {candidate.flux.toFixed(2)}</p>}
                       </div>
+                      
+                      {candidate.notes && (
+                        <div className="mt-2 p-2 bg-[#111] rounded text-xs text-[#a1a1aa] border border-[#333]">
+                          {candidate.notes}
+                        </div>
+                      )}
+                      
+                      <div className="mt-3 flex items-center gap-2">
+                        <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-medium ${candidate.classification === 'confirmed' ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : candidate.classification === 'rejected' ? 'bg-red-950 text-red-400 border border-red-900' : 'bg-[#111] text-[#71717a] border border-[#333]'}`}>
+                          {candidate.classification}
+                        </span>
+                        
+                        <button 
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            try {
+                              const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/candidates/${candidate.id}/classify-ai`, { method: 'POST' });
+                              if (res.ok) {
+                                const updated = await res.json();
+                                setCandidates(prev => prev.map(c => c.id === updated.id ? updated : c));
+                              }
+                            } catch (err) {
+                              console.error(err);
+                            }
+                          }}
+                          className="ml-auto text-xs bg-[#111] hover:bg-[#222] border border-[#333] text-[#ededed] px-2 py-1 rounded transition-colors"
+                        >
+                          Run AI Analysis
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

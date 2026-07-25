@@ -106,3 +106,55 @@ async def bulk_review(
             updated += 1
 
     return {"updated": updated}
+
+@router.post("/{candidate_id}/classify-ai", response_model=CandidateResponse)
+async def ai_classify_candidate(
+    candidate_id: int,
+    session: AsyncSession = Depends(get_session),
+):
+    """Use AI (OpenRouter) to analyze and classify a candidate based on its metrics."""
+    from app.config import settings
+    from openai import AsyncOpenAI
+    
+    candidate = await session.get(Candidate, candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+        
+    if settings.llm_provider != "openrouter" or not settings.llm_api_key:
+        raise HTTPException(status_code=500, detail="OpenRouter AI is not configured")
+
+    client = AsyncOpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=settings.llm_api_key,
+    )
+    
+    prompt = f"""
+    You are an expert astronomical AI classifier. Analyze the following candidate detection metrics and classify it as either 'confirmed' (likely real asteroid/object) or 'rejected' (likely artifact/noise).
+    
+    Metrics:
+    - Confidence Score: {candidate.confidence_score}
+    - Motion Speed (px/hr): {candidate.motion_speed}
+    - Flux: {candidate.flux}
+    - SNR: {candidate.snr}
+    
+    Respond ONLY with a JSON object in this format: {{"classification": "confirmed" | "rejected", "notes": "brief reason why"}}
+    """
+    
+    try:
+        response = await client.chat.completions.create(
+            model="anthropic/claude-3-haiku-20240307", # OpenRouter fast model
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+        import json
+        result = json.loads(response.choices[0].message.content)
+        
+        candidate.classification = result.get("classification", "flagged")
+        candidate.notes = f"AI Analysis: {result.get('notes', 'No reason provided.')}"
+        candidate.reviewed_at = datetime.utcnow()
+        await session.commit()
+        
+        return candidate
+    except Exception as e:
+        logger.error(f"AI Classification failed: {e}")
+        raise HTTPException(status_code=500, detail=f"AI Classification failed: {str(e)}")

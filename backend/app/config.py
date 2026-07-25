@@ -55,8 +55,8 @@ class Settings(BaseSettings):
     celery_broker_url: Optional[str] = None  # None = use in-process tasks
     celery_result_backend: Optional[str] = None
 
-    # AI Service
-    llm_provider: Optional[str] = None  # gemini, openai, anthropic, openrouter
+    # LLM Settings (for AI Assistant)
+    llm_provider: Optional[str] = "openrouter"  # gemini, openai, anthropic, openrouter
     llm_model: Optional[str] = None
     llm_api_key: Optional[str] = None
     llm_base_url: Optional[str] = None

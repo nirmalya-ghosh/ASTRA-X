@@ -82,8 +82,9 @@ export default function PipelineWizard() {
       
     } catch (err: any) {
       console.error(err);
-      setLogs(prev => [...prev, `ERROR: ${err.message}`]);
-      setIsUploading(false);
+      setLogs(prev => [...prev, `❌ ERROR: ${err.toString()}`, "Pipeline failed. Please refresh the page to try again."]);
+      // Do not set isUploading(false) here, otherwise the log window instantly disappears
+      // and the user is thrown back to the upload form without seeing the error!
     }
   };
 

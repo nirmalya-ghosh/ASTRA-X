@@ -13,6 +13,7 @@ interface Candidate {
   flux: number | null;
   motion_speed: number | null;
   classification: string;
+  notes?: string;
 }
 
 export default function DatasetResultsPage({ params }: { params: Promise<{ id: string }> }) {

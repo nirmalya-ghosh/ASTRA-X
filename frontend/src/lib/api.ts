@@ -111,7 +111,7 @@ export interface Candidate {
   detection_count: number;
   classification: string;
   object_type: string | null;
-  notes: string | null;
+  notes?: string;
   detection_method: string | null;
   created_at: string;
   reviewed_at: string | null;

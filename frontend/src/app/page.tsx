@@ -21,7 +21,8 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchDatasets() {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/datasets?limit=10`);
+        const { getApiUrl } = await import("@/lib/api");
+        const res = await fetch(`${getApiUrl()}/datasets?limit=10`);
         if (res.ok) {
           const data = await res.json();
           setDatasets(data.datasets || []);

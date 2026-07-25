@@ -27,7 +27,8 @@ export default function DatasetResultsPage({ params }: { params: Promise<{ id: s
   useEffect(() => {
     async function fetchData() {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+        const { getApiUrl } = await import("@/lib/api");
+        const apiUrl = getApiUrl();
         
         // Fetch dataset name
         const dsRes = await fetch(`${apiUrl}/datasets/${datasetId}`);
@@ -130,7 +131,8 @@ export default function DatasetResultsPage({ params }: { params: Promise<{ id: s
                           onClick={async (e) => {
                             e.preventDefault();
                             try {
-                              const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/candidates/${candidate.id}/classify-ai`, { method: 'POST' });
+                              const { getApiUrl } = await import("@/lib/api");
+                              const res = await fetch(`${getApiUrl()}/candidates/${candidate.id}/classify-ai`, { method: 'POST' });
                               if (res.ok) {
                                 const updated = await res.json();
                                 setCandidates(prev => prev.map(c => c.id === updated.id ? updated : c));

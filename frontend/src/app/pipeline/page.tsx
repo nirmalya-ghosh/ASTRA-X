@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { UploadCloud, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { getApiUrl } from "@/lib/api";
 
 export default function PipelineWizard() {
   const [files, setFiles] = useState<File[]>([]);
@@ -32,7 +33,7 @@ export default function PipelineWizard() {
     setLogs(["Initializing analysis environment..."]);
     
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+      const apiUrl = getApiUrl();
       
       // 1. Upload file to create dataset
       setLogs(prev => [...prev, `Uploading ${files[0].name}...`]);

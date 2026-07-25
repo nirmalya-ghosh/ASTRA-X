@@ -23,7 +23,8 @@ export function FloatingAssistant() {
 
     try {
       // Send to FastAPI Backend
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/assistant/chat`, {
+      const { getApiUrl } = await import("@/lib/api");
+      const response = await fetch(`${getApiUrl()}/assistant/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMessage, provider }),

@@ -3,7 +3,16 @@
  * Centralized API communication with the FastAPI backend.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+export function getApiUrl(): string {
+  let url = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+  // Gracefully handle if the user forgot to append /api/v1 in their Vercel settings
+  if (!url.includes("/api/v1")) {
+    url = url.replace(/\/+$/, '') + "/api/v1";
+  }
+  return url.replace(/\/+$/, '');
+}
+
+const API_BASE = getApiUrl();
 
 interface FetchOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;

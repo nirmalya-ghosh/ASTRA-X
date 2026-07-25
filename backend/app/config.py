@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     # Database
-    database_url: str = "postgresql+asyncpg://postgres:postgres@db.xxxxxxxxxxxx.supabase.co:5432/postgres"
+    database_url: str = "postgresql+psycopg://postgres:postgres@db.xxxxxxxxxxxx.supabase.co:5432/postgres"
 
     # Storage
     data_dir: Path = Path("./data")

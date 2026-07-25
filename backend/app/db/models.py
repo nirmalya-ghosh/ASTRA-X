@@ -181,9 +181,6 @@ class ChatMessage(Base):
 connect_args = {}
 if "sqlite" in settings.database_url:
     connect_args["check_same_thread"] = False
-elif "postgresql+asyncpg" in settings.database_url:
-    # Disable prepared statements for compatibility with Supabase PgBouncer (IPv4 Pooler)
-    connect_args["prepared_statement_cache_size"] = 0
 
 engine = create_async_engine(
     settings.database_url,

@@ -186,29 +186,55 @@ def remove_duplicates(
 ) -> list[dict]:
     """
     Remove duplicate detections that are within distance_threshold pixels.
-    Keeps the candidate with highest flux.
+    Uses Scikit-Learn DBSCAN for robust spatial clustering.
+    Keeps the candidate with highest flux in each cluster.
     """
-    if not candidates:
-        return []
+    if not candidates or len(candidates) < 2:
+        return candidates
 
-    # Sort by flux (keep brightest)
-    sorted_cands = sorted(candidates, key=lambda c: c.get("flux", 0), reverse=True)
-
-    kept = []
-    for cand in sorted_cands:
-        is_duplicate = False
-        for existing in kept:
-            dx = cand["x"] - existing["x"]
-            dy = cand["y"] - existing["y"]
-            dist = np.sqrt(dx**2 + dy**2)
-            if dist < distance_threshold:
-                is_duplicate = True
-                break
-        if not is_duplicate:
-            kept.append(cand)
-
-    n_removed = len(candidates) - len(kept)
-    if n_removed > 0:
-        logger.info(f"Removed {n_removed} duplicate detections")
-
-    return kept
+    try:
+        from sklearn.cluster import DBSCAN
+        
+        # Extract coordinates for clustering
+        coords = np.array([[c["x"], c["y"]] for c in candidates])
+        
+        # DBSCAN clustering
+        # eps is the max distance between two samples for one to be considered as in the neighborhood of the other
+        clustering = DBSCAN(eps=distance_threshold, min_samples=1).fit(coords)
+        labels = clustering.labels_
+        
+        kept = []
+        for cluster_id in set(labels):
+            if cluster_id == -1: # Noise points (shouldn't happen with min_samples=1)
+                continue
+                
+            # Get all candidates in this cluster
+            cluster_cands = [candidates[i] for i in range(len(labels)) if labels[i] == cluster_id]
+            
+            # Keep the one with the highest flux
+            best_cand = max(cluster_cands, key=lambda c: c.get("flux", 0))
+            kept.append(best_cand)
+            
+        n_removed = len(candidates) - len(kept)
+        if n_removed > 0:
+            logger.info(f"DBSCAN removed {n_removed} duplicate spatial detections")
+            
+        return kept
+        
+    except ImportError:
+        logger.warning("scikit-learn not installed, falling back to basic duplicate removal")
+        # Fallback to basic method if sklearn is missing
+        sorted_cands = sorted(candidates, key=lambda c: c.get("flux", 0), reverse=True)
+        kept = []
+        for cand in sorted_cands:
+            is_duplicate = False
+            for existing in kept:
+                dx = cand["x"] - existing["x"]
+                dy = cand["y"] - existing["y"]
+                dist = np.sqrt(dx**2 + dy**2)
+                if dist < distance_threshold:
+                    is_duplicate = True
+                    break
+            if not is_duplicate:
+                kept.append(cand)
+        return kept

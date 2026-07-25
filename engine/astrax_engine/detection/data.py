@@ -20,7 +20,7 @@ def detect_data_anomalies(file_path: str, z_thresh: float = 3.0) -> List[Dict[st
         from sklearn.preprocessing import StandardScaler
         
         sources = []
-        chunk_size = 50000
+        chunk_size = 200000
         global_row_offset = 0
         
         # Read the CSV in chunks to minimize RAM usage
@@ -39,7 +39,10 @@ def detect_data_anomalies(file_path: str, z_thresh: float = 3.0) -> List[Dict[st
             scaled_data = scaler.fit_transform(chunk_numeric)
             
             # Train and predict using Isolation Forest locally on this chunk
-            clf = IsolationForest(contamination=0.01, random_state=42, n_jobs=-1)
+            # CPU Optimized: n_jobs=1 prevents thread thrashing on 0.1 vCPU servers like Render Free Tier.
+            # Contamination=0.0001 guarantees only the top 0.01% of rows (most dangerous anomalies) are flagged, 
+            # avoiding massive database inserts that slow down processing.
+            clf = IsolationForest(contamination=0.0001, random_state=42, n_jobs=1)
             preds = clf.fit_predict(scaled_data)
             
             # preds: -1 for anomalies, 1 for normal

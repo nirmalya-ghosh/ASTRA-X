@@ -13,6 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.db.models import get_session, Dataset, Frame, Candidate, ProcessingTask
 from app.models.schemas import DetectionRequest, TaskStatusResponse
+from app.services.file_types import DATA_EXTS, FITS_EXTS, IMAGE_EXTS, normalized_extension
+from app.services.task_scheduler import schedule_coroutine
 
 logger = logging.getLogger("astrax.detection")
 router = APIRouter()
@@ -28,6 +30,8 @@ async def run_detection(
     dataset = await session.get(Dataset, body.dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
+    if dataset.status in {"empty", "error"}:
+        raise HTTPException(status_code=400, detail=f"Dataset cannot be processed (status: {dataset.status})")
 
     task = ProcessingTask(
         task_type="detection",
@@ -38,7 +42,8 @@ async def run_detection(
     session.add(task)
     await session.commit()
 
-    background_tasks.add_task(
+    schedule_coroutine(
+        background_tasks,
         _run_detection_pipeline,
         task.id, body.dataset_id, body.fwhm,
         body.threshold_sigma, body.motion_threshold,
@@ -62,6 +67,9 @@ async def _run_detection_pipeline(
         import asyncio
         async with async_session() as session:
             task = await session.get(ProcessingTask, task_id)
+            if not task:
+                logger.error(f"Detection task {task_id} disappeared before execution")
+                return
             task.status = "running"
             task.started_at = datetime.utcnow()
             task.message = "Waiting for dataset indexing to complete..."
@@ -110,11 +118,23 @@ async def _run_detection_pipeline(
             total_frames = len(frames)
             all_candidates = []
 
-            # Sort frames by file extension to determine processing track
-            ext = Path(frames[0].file_path).suffix.lower() if frames else ""
-            is_image = ext in {".jpg", ".jpeg", ".png", ".tif"}
-            is_data = ext in {".csv", ".json", ".tsv", ".xls", ".xlsx", ".parquet"}
-            is_fits = not (is_image or is_data)
+            frame_types = {
+                "fits": 0,
+                "image": 0,
+                "data": 0,
+                "unknown": 0,
+            }
+            models_used = set()
+            for frame in frames:
+                frame_ext = normalized_extension(frame.file_path)
+                if frame_ext in FITS_EXTS:
+                    frame_types["fits"] += 1
+                elif frame_ext in IMAGE_EXTS:
+                    frame_types["image"] += 1
+                elif frame_ext in DATA_EXTS:
+                    frame_types["data"] += 1
+                else:
+                    frame_types["unknown"] += 1
 
             try:
                 from astrax_engine.detection.sources import detect_sources
@@ -125,7 +145,7 @@ async def _run_detection_pipeline(
                 has_engine = False
                 logger.warning(f"astrax_engine not installed: {ie}")
 
-            task.message = f"Running {'ensemble ML' if is_data else 'astronomical'} detection on {total_frames} frame(s)..."
+            task.message = f"Running detection on {total_frames} frame(s)..."
             task.progress = 0.1
             await session.commit()
 
@@ -135,6 +155,11 @@ async def _run_detection_pipeline(
                 task.message = f"Processing {frame.filename} ({i + 1}/{total_frames})..."
                 await session.commit()
 
+                frame_ext = normalized_extension(frame.file_path)
+                is_fits = frame_ext in FITS_EXTS
+                is_image = frame_ext in IMAGE_EXTS
+                is_data = frame_ext in DATA_EXTS
+
                 if has_engine:
                     sources = []
                     
@@ -142,6 +167,27 @@ async def _run_detection_pipeline(
                         # Astro Pipeline
                         try:
                             sources = detect_sources(frame.file_path, fwhm=fwhm, threshold_sigma=threshold_sigma)
+                            models_used.add("DAOStarFinder")
+                            if enable_filter and sources:
+                                try:
+                                    from astrax_engine.io.fits_loader import FITSLoader
+                                    from astrax_engine.detection.filtering import filter_false_positives, remove_duplicates
+                                    from astrax_engine.detection.ranking import rank_candidates
+
+                                    image_data = FITSLoader().load_data(frame.file_path)
+                                    sources = remove_duplicates(sources, distance_threshold=max(2.0, fwhm))
+                                    sources = filter_false_positives(
+                                        sources,
+                                        image_data,
+                                        snr_threshold=max(3.0, threshold_sigma * 0.6),
+                                    )
+                                    sources = [src for src in sources if not src.get("rejected")]
+                                    for src in sources:
+                                        src["total_frames"] = total_frames
+                                    sources = rank_candidates(sources)
+                                    models_used.update({"FalsePositiveFilter", "CandidateRanker"})
+                                except Exception as e:
+                                    logger.warning(f"FITS QA/ranking skipped for {frame.filename}: {e}")
                             task.message = f"DAOStarFinder detected {len(sources)} sources in {frame.filename}"
                             await session.commit()
                         except Exception as e:
@@ -153,6 +199,7 @@ async def _run_detection_pipeline(
                         # Vision Pipeline
                         try:
                             sources = detect_vision_sources(frame.file_path)
+                            models_used.add("OpenCV_Vision")
                             task.message = f"Vision pipeline detected {len(sources)} objects in {frame.filename}"
                             await session.commit()
                         except Exception as e:
@@ -167,6 +214,7 @@ async def _run_detection_pipeline(
                             await session.commit()
                             
                             sources = detect_data_anomalies(frame.file_path)
+                            models_used.update(["IsolationForest", "LocalOutlierFactor", "EllipticEnvelope", "SGDOneClassSVM", "ZScoreOutlier"])
                             
                             task.message = f"Ensemble detected {len(sources)} anomalies in {frame.filename}"
                             await session.commit()
@@ -186,12 +234,33 @@ async def _run_detection_pipeline(
 
                         # Verification
                         notes_str = src.get("notes", "") or ""
-                        meta_json = {}
+                        meta_json = {
+                            "frame_type": "fits" if is_fits else "image" if is_image else "data" if is_data else "unknown",
+                        }
+                        for meta_key in ("score_breakdown", "review_priority", "rejection_reason"):
+                            if meta_key in src:
+                                meta_json[meta_key] = src.get(meta_key)
                         object_type = None
                         
                         ra = src.get("ra")
                         dec = src.get("dec")
                         if is_fits and ra is not None and dec is not None and raw_confidence > 0.6:
+                            try:
+                                from astrax_engine.analysis.verification import crossmatch_gaia
+                                gaia_res = crossmatch_gaia(ra, dec, radius_arcsec=2.0)
+                                if gaia_res.get("status") in {"stationary_star", "stellar_source"}:
+                                    meta_json["gaia_dr3"] = gaia_res
+                                    notes_str += (
+                                        f"\n[Gaia DR3] {gaia_res.get('status')}: "
+                                        f"{gaia_res.get('source_id')} "
+                                        f"({gaia_res.get('distance_arcsec', 0):.2f}\")"
+                                    )
+                                    if gaia_res.get("status") == "stationary_star":
+                                        object_type = "star"
+                                        raw_confidence = min(raw_confidence, 0.35)
+                            except Exception as e:
+                                logger.warning(f"Gaia DR3 cross-match error: {e}")
+
                             try:
                                 from astrax_engine.analysis.verification import verify_candidate
                                 obs_time = frame.date_obs or datetime.utcnow()
@@ -221,6 +290,9 @@ async def _run_detection_pipeline(
                             sharpness=src.get("sharpness"),
                             roundness=src.get("roundness"),
                             confidence_score=round(float(raw_confidence), 4),
+                            risk_score=round(float(src.get("risk_score", max(0.0, 1.0 - raw_confidence))), 4),
+                            persistence_score=round(float(src.get("persistence_score", 0.0)), 4),
+                            detection_count=int(src.get("detection_count", 1)),
                             notes=notes_str,
                             object_type=object_type,
                             metadata_json=meta_json,
@@ -233,13 +305,14 @@ async def _run_detection_pipeline(
                     await session.flush()
 
             # Motion detection (only applicable for FITS sequences)
-            if enable_motion and has_engine and len(frames) >= 2 and is_fits:
+            has_fits_sequence = frame_types["fits"] >= 2
+            if enable_motion and has_engine and has_fits_sequence:
                 task.message = "Analyzing motion across frames..."
                 task.progress = 0.85
                 await session.commit()
 
             # Tracklet Generation & Orbit Estimation
-            if is_fits and len(frames) >= 3:
+            if frame_types["fits"] >= 3:
                 task.message = "Linking tracklets and estimating orbits..."
                 task.progress = 0.88
                 await session.commit()
@@ -284,8 +357,10 @@ async def _run_detection_pipeline(
             task.result_json = {
                 "total_candidates": len(all_candidates),
                 "frames_processed": total_frames,
-                "dataset_type": ext,
-                "models_used": ["IsolationForest", "LocalOutlierFactor", "EllipticEnvelope", "SGDOneClassSVM", "ZScoreOutlier"] if is_data else ["DAOStarFinder"] if is_fits else ["OpenCV_Vision"],
+                "dataset_type": "mixed" if sum(1 for count in frame_types.values() if count) > 1 else next((kind for kind, count in frame_types.items() if count), "unknown"),
+                "frame_types": frame_types,
+                "models_used": sorted(models_used) if models_used else ["none"],
+                "quality_note": "Confidence scores are triage probabilities, not a guaranteed scientific accuracy rate.",
             }
             await session.commit()
 

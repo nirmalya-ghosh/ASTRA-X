@@ -10,6 +10,101 @@ from datetime import datetime
 
 logger = logging.getLogger("astrax.engine.analysis.verification")
 
+
+def query_gaia_dr3(ra: float, dec: float, radius_arcsec: float = 2.0, limit: int = 10) -> List[Dict[str, Any]]:
+    """
+    Query Gaia DR3 around a sky position.
+
+    Returns compact, JSON-safe rows sorted by angular separation. Failures are
+    non-fatal because Gaia access is an online enrichment step.
+    """
+    try:
+        from astroquery.gaia import Gaia
+        from astropy import units as u
+        from astropy.coordinates import SkyCoord
+
+        coord = SkyCoord(ra, dec, unit="deg", frame="icrs")
+        query = f"""
+            SELECT TOP {int(limit)}
+                source_id, ra, dec, phot_g_mean_mag, parallax,
+                pmra, pmdec, radial_velocity,
+                DISTANCE(
+                    POINT('ICRS', ra, dec),
+                    POINT('ICRS', {float(ra)}, {float(dec)})
+                ) * 3600 AS distance_arcsec
+            FROM gaiadr3.gaia_source
+            WHERE 1 = CONTAINS(
+                POINT('ICRS', ra, dec),
+                CIRCLE('ICRS', {float(ra)}, {float(dec)}, {(radius_arcsec * u.arcsec).to(u.deg).value})
+            )
+            ORDER BY distance_arcsec ASC
+        """
+        job = Gaia.launch_job_async(query, verbose=False)
+        table = job.get_results()
+        if table is None or len(table) == 0:
+            return []
+
+        matches = []
+        for row in table:
+            matches.append({
+                "source_id": str(row["source_id"]),
+                "ra": float(row["ra"]),
+                "dec": float(row["dec"]),
+                "g_mag": None if np.ma.is_masked(row["phot_g_mean_mag"]) else float(row["phot_g_mean_mag"]),
+                "parallax_mas": None if np.ma.is_masked(row["parallax"]) else float(row["parallax"]),
+                "pmra_mas_per_year": None if np.ma.is_masked(row["pmra"]) else float(row["pmra"]),
+                "pmdec_mas_per_year": None if np.ma.is_masked(row["pmdec"]) else float(row["pmdec"]),
+                "radial_velocity_km_s": None if np.ma.is_masked(row["radial_velocity"]) else float(row["radial_velocity"]),
+                "distance_arcsec": float(row["distance_arcsec"]),
+                "source": "Gaia DR3",
+            })
+        return matches
+    except ImportError:
+        logger.warning("astroquery is not installed. Cannot query Gaia DR3.")
+        return []
+    except Exception as e:
+        logger.error(f"Failed to query Gaia DR3: {e}")
+        return []
+
+
+def crossmatch_gaia(
+    ra: float,
+    dec: float,
+    radius_arcsec: float = 2.0,
+    stationary_threshold_mas_per_year: float = 25.0,
+) -> Dict[str, Any]:
+    """
+    Cross-match a detection against Gaia DR3 and classify stationary stars.
+    """
+    if ra is None or dec is None:
+        return {"status": "unverifiable", "reason": "Missing RA/DEC"}
+
+    matches = query_gaia_dr3(ra, dec, radius_arcsec=radius_arcsec)
+    if not matches:
+        return {
+            "status": "no_match",
+            "reason": f"No Gaia DR3 source found within {radius_arcsec}\" radius",
+            "matches": [],
+        }
+
+    best_match = matches[0]
+    pmra = best_match.get("pmra_mas_per_year") or 0.0
+    pmdec = best_match.get("pmdec_mas_per_year") or 0.0
+    proper_motion = float(np.hypot(pmra, pmdec))
+    best_match["proper_motion_mas_per_year"] = proper_motion
+
+    status = "stationary_star" if proper_motion <= stationary_threshold_mas_per_year else "stellar_source"
+    return {
+        "status": status,
+        "source_id": best_match["source_id"],
+        "distance_arcsec": best_match["distance_arcsec"],
+        "g_mag": best_match.get("g_mag"),
+        "proper_motion_mas_per_year": proper_motion,
+        "best_match": best_match,
+        "matches": matches,
+        "reason": f"Gaia DR3 match {best_match['source_id']} at {best_match['distance_arcsec']:.2f}\"",
+    }
+
 def query_mpc(ra: float, dec: float, time: datetime, radius_arcsec: float = 30.0) -> List[Dict[str, Any]]:
     """
     Query the Minor Planet Center to find known objects near the given coordinates at a specific time.

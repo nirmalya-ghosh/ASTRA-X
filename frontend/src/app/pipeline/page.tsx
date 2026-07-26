@@ -17,6 +17,63 @@ export default function PipelineWizard() {
   const router = useRouter();
   const logEndRef = useRef<HTMLDivElement>(null);
 
+  const getErrorMessage = (error: unknown) => {
+    return error instanceof Error ? error.message : String(error);
+  };
+
+  const requestJson = async <T,>(url: string, init?: RequestInit, timeoutMs = 20000): Promise<T> => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...init, signal: controller.signal });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errText || res.statusText}`);
+      }
+      return await res.json();
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  };
+
+  const getPipelineLabel = (file: File) => {
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".csv") || name.endsWith(".json") || name.endsWith(".tsv") ||
+        name.endsWith(".xls") || name.endsWith(".xlsx") || name.endsWith(".parquet")) {
+      return {
+        launch: "Launching multi-model ensemble detection pipeline...",
+        task: "Running 5 ML models:",
+        models: [
+          "IsolationForest (tree-based anomaly isolation)",
+          "LocalOutlierFactor (density-based detection)",
+          "EllipticEnvelope (Gaussian distribution)",
+          "SGDOneClassSVM (support vector boundary)",
+          "ZScoreOutlier (statistical sigma-clipping)",
+        ],
+      };
+    }
+    if (name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png")) {
+      return {
+        launch: "Launching computer-vision detection pipeline...",
+        task: "Running OpenCV vision detector:",
+        models: [
+          "Adaptive thresholding",
+          "Contour analysis",
+          "HOG feature extraction",
+        ],
+      };
+    }
+    return {
+      launch: "Launching astronomical FITS detection pipeline...",
+      task: "Running astronomical source detector:",
+      models: [
+        "DAOStarFinder source detection",
+        "Known-object verification",
+        "Tracklet and orbit analysis",
+      ],
+    };
+  };
+
   // Auto-scroll logs to bottom
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -36,23 +93,51 @@ export default function PipelineWizard() {
     }
   };
 
+  const waitForDatasetReady = async (apiUrl: string, dsId: number) => {
+    const maxPolls = 120; // 4 minutes max (120 * 2s)
+    let lastStatus = "pending";
+
+    for (let i = 0; i < maxPolls; i++) {
+      const dataset = await requestJson<{ status: string; file_count: number }>(`${apiUrl}/datasets/${dsId}`);
+      const previousStatus = lastStatus;
+      lastStatus = dataset.status;
+
+      if (dataset.status === "ready") {
+        setLogs(prev => [...prev, `✅ Dataset #${dsId} indexed (${dataset.file_count} file${dataset.file_count === 1 ? "" : "s"}).`]);
+        return;
+      }
+
+      if (dataset.status === "empty" || dataset.status === "error") {
+        throw new Error(`Dataset indexing ended with status "${dataset.status}"`);
+      }
+
+      setProgress(Math.min(35, 20 + Math.round((i / maxPolls) * 15)));
+      if (i === 0 || dataset.status !== previousStatus || i % 5 === 0) {
+        setLogs(prev => [...prev, `📁 Dataset status: ${dataset.status}. Waiting for indexing...`]);
+      }
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
+    throw new Error(`Dataset indexing timed out (last status: ${lastStatus})`);
+  };
+
   const pollTaskStatus = async (apiUrl: string, taskId: number, dsId: number) => {
     const maxPolls = 600; // 10 minutes max (600 * 1s)
+    let pendingPolls = 0;
+
     for (let i = 0; i < maxPolls; i++) {
       try {
-        const res = await fetch(`${apiUrl}/tasks/${taskId}`);
-        if (!res.ok) {
-          // Tasks endpoint might not exist — fall back to simple wait
-          setLogs(prev => [...prev, `⚠️ Task status endpoint returned ${res.status}. Waiting...`]);
-          await new Promise(r => setTimeout(r, 5000));
-          continue;
-        }
-
-        const task = await res.json();
+        const task = await requestJson<{
+          status: string;
+          progress?: number;
+          message?: string;
+          error_message?: string;
+          result_json?: { total_candidates?: number; models_used?: string[] };
+        }>(`${apiUrl}/tasks/${taskId}`);
         
         // Update progress
         const taskProgress = Math.round((task.progress || 0) * 100);
-        setProgress(Math.max(20, Math.min(95, taskProgress)));
+        setProgress(Math.max(35, Math.min(95, taskProgress)));
 
         // Update log with latest message
         if (task.message) {
@@ -64,6 +149,15 @@ export default function PipelineWizard() {
             }
             return prev;
           });
+        }
+
+        if (task.status === "pending") {
+          pendingPolls += 1;
+          if (pendingPolls === 5) {
+            setLogs(prev => [...prev, "⏳ Detection task is still queued. Waiting for the backend worker..."]);
+          }
+        } else {
+          pendingPolls = 0;
         }
 
         if (task.status === "completed") {
@@ -94,8 +188,8 @@ export default function PipelineWizard() {
 
         // Still running — wait and poll again
         await new Promise(r => setTimeout(r, 2000));
-      } catch (err: any) {
-        setLogs(prev => [...prev, `⚠️ Poll error: ${err.message}. Retrying...`]);
+      } catch (err: unknown) {
+        setLogs(prev => [...prev, `⚠️ Poll error: ${getErrorMessage(err)}. Retrying...`]);
         await new Promise(r => setTimeout(r, 3000));
       }
     }
@@ -116,6 +210,7 @@ export default function PipelineWizard() {
     
     try {
       const apiUrl = getApiUrl();
+      const pipelineLabel = getPipelineLabel(files[0]);
       
       // 1. Upload file
       setLogs(prev => [...prev, `📤 Uploading ${files[0].name} (${(files[0].size / 1024 / 1024).toFixed(1)} MB)...`]);
@@ -138,10 +233,12 @@ export default function PipelineWizard() {
       setDatasetId(dataset.id);
       setLogs(prev => [...prev, `✅ Dataset #${dataset.id} created. Indexing files...`]);
       setProgress(20);
+
+      await waitForDatasetReady(apiUrl, dataset.id);
       
       // 2. Trigger detection pipeline
-      setLogs(prev => [...prev, "🧠 Launching multi-model ensemble detection pipeline..."]);
-      setProgress(25);
+      setLogs(prev => [...prev, `🧠 ${pipelineLabel.launch}`]);
+      setProgress(40);
       
       const detectionRes = await fetch(`${apiUrl}/detection/run`, {
         method: "POST",
@@ -167,21 +264,19 @@ export default function PipelineWizard() {
       
       setLogs(prev => [
         ...prev, 
-        `📋 Task #${taskId} created. Running 5 ML models:`,
-        `   ├─ IsolationForest (tree-based anomaly isolation)`,
-        `   ├─ LocalOutlierFactor (density-based detection)`,
-        `   ├─ EllipticEnvelope (Gaussian distribution)`,
-        `   ├─ SGDOneClassSVM (support vector boundary)`,
-        `   └─ ZScoreOutlier (statistical sigma-clipping)`,
+        `📋 Task #${taskId} created. ${pipelineLabel.task}`,
+        ...pipelineLabel.models.map((model, index) => (
+          `   ${index === pipelineLabel.models.length - 1 ? "└" : "├"}─ ${model}`
+        )),
         `⏳ Polling for results...`,
       ]);
 
       // 3. Poll task status until complete
       await pollTaskStatus(apiUrl, taskId, dataset.id);
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setLogs(prev => [...prev, `❌ ERROR: ${err.toString()}`]);
+      setLogs(prev => [...prev, `❌ ERROR: ${getErrorMessage(err)}`]);
       setPipelineFailed(true);
     }
   };

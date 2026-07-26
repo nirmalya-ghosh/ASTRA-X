@@ -104,6 +104,7 @@ class CandidateResponse(BaseModel):
     object_type: Optional[str]
     notes: Optional[str]
     detection_method: Optional[str]
+    metadata_json: Optional[dict]
     created_at: datetime
     reviewed_at: Optional[datetime]
 

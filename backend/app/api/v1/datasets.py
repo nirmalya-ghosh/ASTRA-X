@@ -20,6 +20,8 @@ from app.models.schemas import (
     DatasetResponse, DatasetListResponse, DatasetImportFolder,
     FrameResponse, FrameHeaderResponse
 )
+from app.services.file_types import DATA_EXTS, FITS_EXTS, IMAGE_EXTS, is_supported_file, normalized_extension
+from app.services.task_scheduler import schedule_coroutine
 
 logger = logging.getLogger("astrax.datasets")
 router = APIRouter()
@@ -42,14 +44,8 @@ async def _index_dataset(dataset_id: int, source_path: str):
             source = Path(source_path)
             target_files = []
 
-            # Supported extensions mapping
-            fits_exts = {".fits", ".fit", ".fts", ".fits.gz", ".fit.gz"}
-            img_exts = {".jpg", ".jpeg", ".png", ".tif", ".tiff"}
-            data_exts = {".csv", ".json", ".tsv", ".xls", ".xlsx", ".parquet"}
-            all_exts = fits_exts | img_exts | data_exts
-
             if source.is_file():
-                if source.suffix.lower() in all_exts:
+                if is_supported_file(source):
                     target_files.append(source)
                 elif source.suffix.lower() == ".zip":
                     # Extract ZIP
@@ -57,15 +53,26 @@ async def _index_dataset(dataset_id: int, source_path: str):
                     extract_dir = settings.upload_dir / str(dataset_id)
                     extract_dir.mkdir(parents=True, exist_ok=True)
                     with zipfile.ZipFile(source, 'r') as zf:
-                        zf.extractall(extract_dir)
+                        extract_root = extract_dir.resolve()
+                        for member in zf.infolist():
+                            member_path = (extract_dir / member.filename).resolve()
+                            if not str(member_path).startswith(str(extract_root)):
+                                logger.warning(f"Skipping unsafe ZIP member path: {member.filename}")
+                                continue
+                            if member.is_dir():
+                                member_path.mkdir(parents=True, exist_ok=True)
+                                continue
+                            member_path.parent.mkdir(parents=True, exist_ok=True)
+                            with zf.open(member) as src, open(member_path, "wb") as dst:
+                                shutil.copyfileobj(src, dst)
                     for root, _, files in os.walk(extract_dir):
                         for f in files:
-                            if Path(f).suffix.lower() in all_exts:
+                            if is_supported_file(f):
                                 target_files.append(Path(root) / f)
             elif source.is_dir():
                 for root, _, files in os.walk(source):
                     for f in files:
-                        if Path(f).suffix.lower() in all_exts:
+                        if is_supported_file(f):
                             target_files.append(Path(root) / f)
 
             target_files.sort(key=lambda p: p.name)
@@ -91,10 +98,10 @@ async def _index_dataset(dataset_id: int, source_path: str):
                     frame_index=idx,
                 )
 
-                ext = fpath.suffix.lower()
+                ext = normalized_extension(fpath)
                 header_dict = {"file_type": "unknown"}
 
-                if ext in fits_exts and has_astropy:
+                if ext in FITS_EXTS and has_astropy:
                     header_dict["file_type"] = "fits"
                     try:
                         with astropy_fits.open(str(fpath), memmap=True) as hdul:
@@ -127,7 +134,7 @@ async def _index_dataset(dataset_id: int, source_path: str):
                     except Exception as e:
                         logger.error(f"Error reading FITS header for {fpath}: {e}")
 
-                elif ext in img_exts and has_pil:
+                elif ext in IMAGE_EXTS and has_pil:
                     header_dict["file_type"] = "image"
                     try:
                         with Image.open(fpath) as img:
@@ -141,7 +148,7 @@ async def _index_dataset(dataset_id: int, source_path: str):
                     except Exception as e:
                         logger.error(f"Error reading image metadata for {fpath}: {e}")
                 
-                elif ext in data_exts:
+                elif ext in DATA_EXTS:
                     header_dict["file_type"] = "data"
                     try:
                         file_size = fpath.stat().st_size
@@ -169,7 +176,9 @@ async def _index_dataset(dataset_id: int, source_path: str):
             dataset.metadata_json = {
                 "file_count": len(target_files),
                 "total_size_mb": round(total_size / (1024 * 1024), 2),
-                "extensions_found": list(set(f.suffix.lower() for f in target_files)),
+                "extensions_found": sorted(set(normalized_extension(f) for f in target_files)),
+                "scan_status": "ok" if target_files else "no_supported_files",
+                "supported_extensions": sorted(FITS_EXTS | IMAGE_EXTS | DATA_EXTS),
             }
 
             await session.commit()
@@ -219,7 +228,7 @@ async def upload_dataset(
     await session.commit()
 
     # Index in background
-    background_tasks.add_task(_index_dataset, dataset.id, str(file_path))
+    schedule_coroutine(background_tasks, _index_dataset, dataset.id, str(file_path))
 
     return dataset
 
@@ -244,7 +253,7 @@ async def import_folder(
     session.add(dataset)
     await session.commit()
 
-    background_tasks.add_task(_index_dataset, dataset.id, str(source.resolve()))
+    schedule_coroutine(background_tasks, _index_dataset, dataset.id, str(source.resolve()))
 
     return dataset
 

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import get_session, Dataset, ProcessingTask
 from app.models.schemas import ProcessingRequest, TaskStatusResponse
+from app.services.task_scheduler import schedule_coroutine
 
 logger = logging.getLogger("astrax.processing")
 router = APIRouter()
@@ -35,10 +36,10 @@ async def run_processing(
         message="Processing pipeline queued",
     )
     session.add(task)
-    await session.flush()
+    await session.commit()
 
     # TODO: Launch processing pipeline in background
-    background_tasks.add_task(_run_processing_pipeline, task.id, body.dataset_id, body.steps)
+    schedule_coroutine(background_tasks, _run_processing_pipeline, task.id, body.dataset_id, body.steps)
 
     return task
 

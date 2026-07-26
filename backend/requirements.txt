@@ -15,47 +15,36 @@ psycopg[binary]>=3.2.0
 pydantic>=2.10.0
 pydantic-settings>=2.6.0
 
-# Task Queue (optional - for production)
-celery[redis]>=5.4.0
-
-# Astronomy Engine
--e ../engine
+# Astronomy Engine (installed separately in Dockerfile)
 astropy>=7.0.0
 photutils>=2.0.0
 astroalign>=2.5.0
 astroscrappy>=1.2.0
 
-# Image Processing
+# Image Processing & ML Models
 numpy>=2.1.0
 scipy>=1.14.0
 opencv-python-headless>=4.10.0
 scikit-image>=0.24.0
 scikit-learn>=1.5.0
-numba>=0.60.0
-
-# GPU Acceleration (optional)
-# cupy-cuda12x>=13.0.0  # Uncomment if CUDA available
 
 # Visualization / Export
 matplotlib>=3.9.0
 Pillow>=11.0.0
 reportlab>=4.2.0
 
-# AI Service (optional - install as needed)
 # LLM Integrations
 openai>=1.55.0
-# anthropic>=0.39.0
-# anthropic>=0.39.0
+google-generativeai>=0.8.0
+httpx>=0.28.0
 
 # Utilities
 aiofiles>=24.1.0
 python-jose>=3.3.0
 passlib>=1.7.4
-httpx>=0.28.0
 orjson>=3.10.0
 
 # Testing
 pytest>=8.3.0
 pytest-asyncio>=0.24.0
 pytest-cov>=6.0.0
-httpx>=0.28.0

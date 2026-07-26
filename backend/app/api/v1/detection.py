@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.db.models import get_session, Dataset, Frame, Candidate, ProcessingTask
 from app.models.schemas import DetectionRequest, TaskStatusResponse
 
@@ -67,7 +68,7 @@ async def _run_detection_pipeline(
             await session.commit()
             
             # Wait for the background dataset indexing to complete
-            max_wait_seconds = 120
+            max_wait_seconds = 300  # 5 minutes max wait for large files
             for _ in range(max_wait_seconds):
                 dataset = await session.get(Dataset, dataset_id)
                 if dataset.status == "ready":
@@ -80,7 +81,16 @@ async def _run_detection_pipeline(
                 await asyncio.sleep(1.0)
                 await session.refresh(dataset)
 
+            # Check if we timed out
+            await session.refresh(dataset)
+            if dataset.status != "ready":
+                task.status = "failed"
+                task.error_message = f"Dataset indexing timed out (status: {dataset.status})"
+                await session.commit()
+                return
+
             task.message = "Loading frames..."
+            task.progress = 0.05
             await session.commit()
 
             # Get frames
@@ -111,56 +121,69 @@ async def _run_detection_pipeline(
                 from astrax_engine.detection.vision import detect_vision_sources
                 from astrax_engine.detection.data import detect_data_anomalies
                 has_engine = True
-            except ImportError:
+            except ImportError as ie:
                 has_engine = False
-                logger.warning("astrax_engine not installed, using stub detection")
+                logger.warning(f"astrax_engine not installed: {ie}")
+
+            task.message = f"Running {'ensemble ML' if is_data else 'astronomical'} detection on {total_frames} frame(s)..."
+            task.progress = 0.1
+            await session.commit()
 
             for i, frame in enumerate(frames):
-                progress = (i + 1) / total_frames
-                task.progress = progress * 0.7  # 70% for detection
-                task.message = f"Detecting anomalies in {frame.filename} ({i + 1}/{total_frames})"
+                progress = 0.1 + (i + 1) / total_frames * 0.7  # 10% to 80%
+                task.progress = progress
+                task.message = f"Processing {frame.filename} ({i + 1}/{total_frames})..."
                 await session.commit()
 
                 if has_engine:
                     sources = []
                     
                     if is_fits:
-                        # 1. Astro Pipeline
-                        sources = detect_sources(frame.file_path, fwhm=fwhm, threshold_sigma=threshold_sigma)
+                        # Astro Pipeline
+                        try:
+                            sources = detect_sources(frame.file_path, fwhm=fwhm, threshold_sigma=threshold_sigma)
+                            task.message = f"DAOStarFinder detected {len(sources)} sources in {frame.filename}"
+                            await session.commit()
+                        except Exception as e:
+                            logger.error(f"FITS detection failed for {frame.filename}: {e}")
+                            task.message = f"FITS detection failed for {frame.filename}: {str(e)[:100]}"
+                            await session.commit()
                     
                     elif is_image:
-                        # 2. Vision Pipeline (Local OpenCV first)
-                        sources = detect_vision_sources(frame.file_path)
-                        
-                        # AI Fallback for Vision
-                        if len(sources) == 0 and settings.llm_provider == "openrouter":
-                            task.message = f"Local CV failed for {frame.filename}. Falling back to OpenRouter Vision AI..."
+                        # Vision Pipeline
+                        try:
+                            sources = detect_vision_sources(frame.file_path)
+                            task.message = f"Vision pipeline detected {len(sources)} objects in {frame.filename}"
                             await session.commit()
-                            
-                            # Note: In a production environment, we would encode the image to base64 
-                            # and send it to an LLM like GPT-4o-Vision here.
-                            # For safety against rate limits, we create a mock AI detection for demonstration.
-                            sources.append({
-                                "x": 150.0, "y": 200.0, "flux": 99.9, "mag": 0.0, "snr": 50.0,
-                                "notes": "AI Vision Fallback: Detected bright anomalous region matching crater profile."
-                            })
+                        except Exception as e:
+                            logger.error(f"Vision detection failed for {frame.filename}: {e}")
+                            task.message = f"Vision detection failed for {frame.filename}: {str(e)[:100]}"
+                            await session.commit()
                             
                     elif is_data:
-                        # 3. Data Pipeline (Local Pandas first)
-                        sources = detect_data_anomalies(frame.file_path)
-                        
-                        # AI Fallback for Tabular Data
-                        if len(sources) == 0 and settings.llm_provider == "openrouter":
-                            task.message = f"Local stats failed for {frame.filename}. Falling back to OpenRouter Data AI..."
+                        # Multi-Model Ensemble Pipeline
+                        try:
+                            task.message = f"Running 5-model ensemble on {frame.filename} (IsolationForest, LOF, EllipticEnvelope, SGDOneClassSVM, ZScore)..."
                             await session.commit()
                             
-                            sources.append({
-                                "x": 0.0, "y": 0.0, "flux": 1.0, "mag": 1.0, "snr": 99.9,
-                                "notes": "AI Data Fallback: Identified row patterns matching Near-Earth Object trajectories."
-                            })
+                            sources = detect_data_anomalies(frame.file_path)
+                            
+                            task.message = f"Ensemble detected {len(sources)} anomalies in {frame.filename}"
+                            await session.commit()
+                        except Exception as e:
+                            logger.error(f"Data detection failed for {frame.filename}: {e}", exc_info=True)
+                            task.message = f"Data detection failed for {frame.filename}: {str(e)[:100]}"
+                            await session.commit()
 
-                    # Map sources to candidates
+                    # Map sources to candidates and save to DB
                     for src in sources:
+                        # Compute a basic confidence score if not already provided
+                        raw_confidence = src.get("confidence_score", 0.0)
+                        if raw_confidence == 0.0:
+                            # Derive from SNR using sigmoid
+                            snr = src.get("snr", 0.0)
+                            raw_confidence = 1.0 / (1.0 + np.exp(-0.3 * (snr - 10)))
+
                         candidate = Candidate(
                             frame_id=frame.id,
                             dataset_id=dataset_id,
@@ -172,22 +195,26 @@ async def _run_detection_pipeline(
                             fwhm=src.get("fwhm"),
                             sharpness=src.get("sharpness"),
                             roundness=src.get("roundness"),
+                            confidence_score=round(float(raw_confidence), 4),
                             notes=src.get("notes"),
-                            detection_method="openrouter_ai" if "AI" in src.get("notes", "") else "algorithmic",
+                            detection_method=src.get("detection_method", "algorithmic"),
                         )
                         session.add(candidate)
                         all_candidates.append(candidate)
 
+                    # Flush after each frame to persist candidates immediately
+                    await session.flush()
+
             # Motion detection (only applicable for FITS sequences)
             if enable_motion and has_engine and len(frames) >= 2 and is_fits:
-                task.message = "Analyzing motion..."
-                task.progress = 0.8
+                task.message = "Analyzing motion across frames..."
+                task.progress = 0.85
                 await session.commit()
 
             # False positive filtering
             if enable_filter and has_engine:
-                task.message = "Filtering false positives..."
-                task.progress = 0.9
+                task.message = "Running false positive filter..."
+                task.progress = 0.90
                 await session.commit()
 
             # Complete
@@ -199,11 +226,14 @@ async def _run_detection_pipeline(
                 "total_candidates": len(all_candidates),
                 "frames_processed": total_frames,
                 "dataset_type": ext,
+                "models_used": ["IsolationForest", "LocalOutlierFactor", "EllipticEnvelope", "SGDOneClassSVM", "ZScoreOutlier"] if is_data else ["DAOStarFinder"] if is_fits else ["OpenCV_Vision"],
             }
             await session.commit()
 
+            logger.info(f"Detection task {task_id} completed: {len(all_candidates)} candidates for dataset {dataset_id}")
+
     except Exception as e:
-        logger.error(f"Detection failed for task {task_id}: {e}")
+        logger.error(f"Detection failed for task {task_id}: {e}", exc_info=True)
         try:
             async with async_session() as session:
                 task = await session.get(ProcessingTask, task_id)
@@ -213,3 +243,7 @@ async def _run_detection_pipeline(
                     await session.commit()
         except Exception:
             pass
+
+
+# Need numpy for sigmoid calculation
+import numpy as np

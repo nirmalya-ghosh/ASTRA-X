@@ -13,7 +13,9 @@ AstraX AI is a professional astronomical image analysis platform that helps rese
 
 ## ✨ Features
 
-- **FITS Dataset Management** — Import, index, and browse FITS files with automatic header extraction
+## ✨ Features
+
+- **Dataset Management** — Import, index, and browse FITS files, images, and tabular data with automatic header extraction
 - **Advanced Image Processing** — Calibration, noise reduction, enhancement, and image registration
 - **5-Model ML Ensemble Detection** — Consensus voting across IsolationForest, LocalOutlierFactor, EllipticEnvelope, SGDOneClassSVM, and Z-Score statistical outlier detection
 - **Astronomical Source Detection** — DAOStarFinder, IRAFStarFinder, adaptive multi-threshold detection
@@ -29,7 +31,7 @@ AstraX AI is a professional astronomical image analysis platform that helps rese
 
 ## 🧠 Detection Models
 
-### Tabular Data (CSV/JSON) — 5-Model Ensemble
+### Tabular Data (CSV/JSON/TSV/XLSX/Parquet) — 5-Model Ensemble
 | Model | Type | Strength |
 |---|---|---|
 | **IsolationForest** | Tree-based | Isolates anomalies by random partitioning |
@@ -115,7 +117,7 @@ ASTRA-X/
 |---|---|
 | Frontend | Next.js 16, TypeScript, Tailwind CSS |
 | Backend | FastAPI, SQLAlchemy (async), Pydantic v2 |
-| ML Engine | scikit-learn (IsolationForest, LOF, EllipticEnvelope, SGDOneClassSVM), astropy, photutils, OpenCV |
+| ML Engine | scikit-learn (IsolationForest, LOF, EllipticEnvelope, SGDOneClassSVM), astropy, photutils, OpenCV, pandas, pyarrow, openpyxl |
 | Database | SQLite (local) / PostgreSQL (production) |
 | AI | DeepSeek, Grok, Gemini, OpenAI, OpenRouter |
 | Deploy | Vercel (frontend) + Render (backend) |
@@ -128,7 +130,7 @@ Once the backend is running, visit:
 
 ## 🔬 Detection Pipeline
 
-1. **Upload Dataset** → Drag & drop FITS, CSV, JSON, or images
+1. **Upload Dataset** → Drag & drop FITS, CSV, JSON, TSV, Excel, Parquet, or images
 2. **Index Files** → Background file scanning and metadata extraction
 3. **Run Ensemble Detection** → 5 ML models vote on every data point
 4. **Consensus Filtering** → Only anomalies with ≥2 model agreement pass

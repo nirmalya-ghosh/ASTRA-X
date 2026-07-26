@@ -113,7 +113,7 @@ async def _run_detection_pipeline(
             # Sort frames by file extension to determine processing track
             ext = Path(frames[0].file_path).suffix.lower() if frames else ""
             is_image = ext in {".jpg", ".jpeg", ".png", ".tif"}
-            is_data = ext in {".csv"}
+            is_data = ext in {".csv", ".json", ".tsv", ".xls", ".xlsx", ".parquet"}
             is_fits = not (is_image or is_data)
 
             try:

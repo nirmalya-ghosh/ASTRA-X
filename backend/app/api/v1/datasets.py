@@ -45,7 +45,7 @@ async def _index_dataset(dataset_id: int, source_path: str):
             # Supported extensions mapping
             fits_exts = {".fits", ".fit", ".fts", ".fits.gz", ".fit.gz"}
             img_exts = {".jpg", ".jpeg", ".png", ".tif", ".tiff"}
-            data_exts = {".csv", ".json"}
+            data_exts = {".csv", ".json", ".tsv", ".xls", ".xlsx", ".parquet"}
             all_exts = fits_exts | img_exts | data_exts
 
             if source.is_file():
@@ -150,6 +150,10 @@ async def _index_dataset(dataset_id: int, source_path: str):
                             with open(fpath, 'r', encoding='utf-8') as f:
                                 first_line = f.readline()
                                 header_dict["columns"] = first_line.strip().split(',')
+                        elif ext == ".tsv":
+                            with open(fpath, 'r', encoding='utf-8') as f:
+                                first_line = f.readline()
+                                header_dict["columns"] = first_line.strip().split('\t')
                     except Exception as e:
                         logger.error(f"Error reading data file metadata for {fpath}: {e}")
 

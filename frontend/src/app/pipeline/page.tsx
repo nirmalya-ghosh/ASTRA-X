@@ -28,7 +28,8 @@ export default function PipelineWizard() {
       const name = f.name.toLowerCase();
       return name.endsWith('.fits') || name.endsWith('.fts') || 
              name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png') ||
-             name.endsWith('.csv') || name.endsWith('.json');
+             name.endsWith('.csv') || name.endsWith('.json') || name.endsWith('.tsv') ||
+             name.endsWith('.xls') || name.endsWith('.xlsx') || name.endsWith('.parquet');
     });
     if (droppedFiles.length > 0) {
       setFiles(prev => [...prev, ...droppedFiles]);
@@ -211,14 +212,14 @@ export default function PipelineWizard() {
               <UploadCloud className="w-5 h-5 text-[#ededed]" />
             </div>
             <h3 className="text-[#ededed] font-medium mb-1">Drag and drop datasets here</h3>
-            <p className="text-sm text-[#71717a] mb-6">Supports FITS, Images (JPG/PNG), CSV, and JSON data</p>
+            <p className="text-sm text-[#71717a] mb-6">Supports FITS, Images (JPG/PNG), and Tabular Data (CSV/JSON/TSV/XLSX/Parquet)</p>
             
             <label className="cursor-pointer vercel-button-primary px-4 py-2 inline-flex items-center text-sm">
               <span>Select Files</span>
               <input 
                 type="file" 
                 multiple 
-                accept=".fits,.fts,.jpg,.jpeg,.png,.csv,.json" 
+                accept=".fits,.fts,.jpg,.jpeg,.png,.csv,.json,.tsv,.xls,.xlsx,.parquet" 
                 className="hidden"
                 onChange={(e) => {
                   if (e.target.files) {

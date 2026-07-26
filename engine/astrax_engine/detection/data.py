@@ -92,7 +92,24 @@ def detect_data_anomalies(file_path: str, z_thresh: float = 3.0) -> List[Dict[st
         global_row_offset = 0
         total_models = len(MODEL_REGISTRY)
 
-        for chunk in pd.read_csv(file_path, chunksize=chunk_size):
+        ext = str(file_path).lower().split('.')[-1]
+        if ext == 'csv':
+            chunks = pd.read_csv(file_path, chunksize=chunk_size)
+        elif ext == 'tsv':
+            chunks = pd.read_csv(file_path, sep='\t', chunksize=chunk_size)
+        else:
+            if ext == 'json':
+                df = pd.read_json(file_path)
+            elif ext in ['xls', 'xlsx']:
+                df = pd.read_excel(file_path)
+            elif ext == 'parquet':
+                df = pd.read_parquet(file_path)
+            else:
+                raise ValueError(f"Unsupported file type: {ext}")
+            # Chunk it manually
+            chunks = (df[i:i + chunk_size] for i in range(0, df.shape[0], chunk_size))
+
+        for chunk in chunks:
             numeric_cols = chunk.select_dtypes(include=[np.number]).columns
 
             if len(numeric_cols) == 0:

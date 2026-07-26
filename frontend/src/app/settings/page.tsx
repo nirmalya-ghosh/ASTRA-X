@@ -30,37 +30,37 @@ export default function SettingsPage() {
 
   return (
     <AppShell>
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="max-w-5xl mx-auto space-y-6 sm:py-6 px-2 sm:px-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-space-100">Settings</h1>
-            <p className="text-sm text-space-500 mt-1">
+            <h1 className="text-xl sm:text-2xl font-semibold text-[#ededed] tracking-tight">Settings</h1>
+            <p className="text-sm text-[#a1a1aa] mt-1">
               Configure application behavior, processing parameters, and integrations
             </p>
           </div>
           <div className="flex gap-2">
-            <button className="flex items-center gap-2 px-3 py-2 rounded-lg bg-space-800/50 text-space-400 border border-space-700 hover:text-space-200 text-xs transition-colors">
-              <RotateCcw className="w-3.5 h-3.5" />
+            <button className="flex items-center gap-2 px-4 py-2 rounded-md vercel-button-secondary text-sm">
+              <RotateCcw className="w-4 h-4" />
               Reset
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neon-500/15 text-neon-400 border border-neon-500/25 hover:bg-neon-500/25 text-xs font-medium transition-colors neon-glow">
-              <Save className="w-3.5 h-3.5" />
+            <button className="flex items-center gap-2 px-4 py-2 rounded-md vercel-button-primary text-sm font-medium">
+              <Save className="w-4 h-4" />
               Save Changes
             </button>
           </div>
         </div>
 
-        <div className="flex gap-6">
+        <div className="flex flex-col md:flex-row gap-6">
           {/* Tab Navigation */}
-          <div className="w-48 shrink-0 space-y-1">
+          <div className="w-full md:w-48 shrink-0 flex md:flex-col overflow-x-auto md:overflow-x-visible space-x-2 md:space-x-0 md:space-y-1 pb-2 md:pb-0">
             {tabs.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setActiveTab(id)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors whitespace-nowrap ${
                   activeTab === id
-                    ? "bg-neon-500/10 text-neon-400 border border-neon-500/15"
-                    : "text-space-400 hover:text-space-200 hover:bg-space-800/50"
+                    ? "bg-[#111] text-[#ededed] border border-[#333]"
+                    : "text-[#a1a1aa] hover:text-[#ededed] hover:bg-[#111] border border-transparent"
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -77,18 +77,18 @@ export default function SettingsPage() {
                   <input
                     type="text"
                     defaultValue="AstraX AI"
-                    className="w-full px-3 py-2 rounded-lg bg-space-800/50 border border-space-700 text-sm text-space-200 focus:border-neon-500/30 focus:outline-none"
+                    className="w-full px-3 py-2 rounded-md vercel-input text-sm"
                   />
                 </SettingField>
                 <SettingField label="Data Directory" hint="Where datasets and cache are stored">
                   <input
                     type="text"
                     defaultValue="./data"
-                    className="w-full px-3 py-2 rounded-lg bg-space-800/50 border border-space-700 text-sm text-space-200 font-mono focus:border-neon-500/30 focus:outline-none"
+                    className="w-full px-3 py-2 rounded-md vercel-input text-sm font-mono"
                   />
                 </SettingField>
                 <SettingField label="Log Level">
-                  <select className="w-full px-3 py-2 rounded-lg bg-space-800/50 border border-space-700 text-sm text-space-300 focus:border-neon-500/30 focus:outline-none">
+                  <select className="w-full px-3 py-2 rounded-md vercel-input text-sm text-[#ededed] bg-[#0a0a0a]">
                     <option>INFO</option>
                     <option>DEBUG</option>
                     <option>WARNING</option>
@@ -112,7 +112,7 @@ export default function SettingsPage() {
                     defaultValue={4}
                     min={1}
                     max={32}
-                    className="w-full px-3 py-2 rounded-lg bg-space-800/50 border border-space-700 text-sm text-space-200 focus:border-neon-500/30 focus:outline-none"
+                    className="w-full px-3 py-2 rounded-md vercel-input text-sm"
                   />
                 </SettingField>
                 <SettingField label="Upload Chunk Size" hint="MB per chunk for file uploads">
@@ -121,7 +121,7 @@ export default function SettingsPage() {
                     defaultValue={10}
                     min={1}
                     max={100}
-                    className="w-full px-3 py-2 rounded-lg bg-space-800/50 border border-space-700 text-sm text-space-200 focus:border-neon-500/30 focus:outline-none"
+                    className="w-full px-3 py-2 rounded-md vercel-input text-sm"
                   />
                 </SettingField>
               </SettingsSection>
@@ -130,19 +130,19 @@ export default function SettingsPage() {
             {activeTab === "detection" && (
               <SettingsSection title="Detection Defaults" icon={Sliders}>
                 <SettingField label="Default FWHM" hint="Full-width at half-maximum (pixels)">
-                  <input type="number" defaultValue={3.0} step={0.5} className="w-full px-3 py-2 rounded-lg bg-space-800/50 border border-space-700 text-sm text-space-200 focus:border-neon-500/30 focus:outline-none" />
+                  <input type="number" defaultValue={3.0} step={0.5} className="w-full px-3 py-2 rounded-md vercel-input text-sm" />
                 </SettingField>
                 <SettingField label="Detection Threshold (σ)" hint="Sigma above background for detection">
-                  <input type="number" defaultValue={5.0} step={0.5} className="w-full px-3 py-2 rounded-lg bg-space-800/50 border border-space-700 text-sm text-space-200 focus:border-neon-500/30 focus:outline-none" />
+                  <input type="number" defaultValue={5.0} step={0.5} className="w-full px-3 py-2 rounded-md vercel-input text-sm" />
                 </SettingField>
                 <SettingField label="Motion Threshold" hint="Minimum motion (pixels) to flag as candidate">
-                  <input type="number" defaultValue={2.0} step={0.5} className="w-full px-3 py-2 rounded-lg bg-space-800/50 border border-space-700 text-sm text-space-200 focus:border-neon-500/30 focus:outline-none" />
+                  <input type="number" defaultValue={2.0} step={0.5} className="w-full px-3 py-2 rounded-md vercel-input text-sm" />
                 </SettingField>
                 <SettingField label="Confidence Threshold" hint="Minimum score to include in results (0-1)">
-                  <input type="number" defaultValue={0.5} step={0.05} min={0} max={1} className="w-full px-3 py-2 rounded-lg bg-space-800/50 border border-space-700 text-sm text-space-200 focus:border-neon-500/30 focus:outline-none" />
+                  <input type="number" defaultValue={0.5} step={0.05} min={0} max={1} className="w-full px-3 py-2 rounded-md vercel-input text-sm" />
                 </SettingField>
                 <SettingField label="Noise Sigma Clip" hint="Sigma clipping level for background estimation">
-                  <input type="number" defaultValue={3.0} step={0.5} className="w-full px-3 py-2 rounded-lg bg-space-800/50 border border-space-700 text-sm text-space-200 focus:border-neon-500/30 focus:outline-none" />
+                  <input type="number" defaultValue={3.0} step={0.5} className="w-full px-3 py-2 rounded-md vercel-input text-sm" />
                 </SettingField>
               </SettingsSection>
             )}
@@ -150,32 +150,34 @@ export default function SettingsPage() {
             {activeTab === "ai" && (
               <SettingsSection title="AI Assistant Configuration" icon={Bot}>
                 <SettingField label="LLM Provider" hint="Select your preferred AI provider">
-                  <select className="w-full px-3 py-2 rounded-lg bg-space-800/50 border border-space-700 text-sm text-space-300 focus:border-neon-500/30 focus:outline-none">
+                  <select className="w-full px-3 py-2 rounded-md vercel-input text-sm text-[#ededed] bg-[#0a0a0a]">
                     <option value="">Not configured</option>
+                    <option value="deepseek">DeepSeek</option>
                     <option value="gemini">Google Gemini</option>
                     <option value="openai">OpenAI</option>
                     <option value="anthropic">Anthropic</option>
                     <option value="openrouter">OpenRouter</option>
+                    <option value="grok">Grok (xAI)</option>
                   </select>
                 </SettingField>
                 <SettingField label="Model" hint="Specific model to use">
-                  <input type="text" placeholder="e.g., gemini-2.0-flash, gpt-4o, claude-sonnet-4-20250514" className="w-full px-3 py-2 rounded-lg bg-space-800/50 border border-space-700 text-sm text-space-200 placeholder:text-space-600 focus:border-neon-500/30 focus:outline-none" />
+                  <input type="text" placeholder="e.g., deepseek-chat, gpt-4o, gemini-1.5-pro" className="w-full px-3 py-2 rounded-md vercel-input text-sm placeholder:text-[#555]" />
                 </SettingField>
                 <SettingField label="API Key" hint="Stored securely. Set via ASTRAX_LLM_API_KEY environment variable for production.">
-                  <input type="password" placeholder="sk-..." className="w-full px-3 py-2 rounded-lg bg-space-800/50 border border-space-700 text-sm text-space-200 placeholder:text-space-600 focus:border-neon-500/30 focus:outline-none font-mono" />
+                  <input type="password" placeholder="sk-..." className="w-full px-3 py-2 rounded-md vercel-input text-sm placeholder:text-[#555] font-mono" />
                 </SettingField>
                 <SettingField label="Base URL (optional)" hint="Custom API endpoint for OpenAI-compatible providers">
-                  <input type="text" placeholder="https://api.openai.com/v1" className="w-full px-3 py-2 rounded-lg bg-space-800/50 border border-space-700 text-sm text-space-200 placeholder:text-space-600 focus:border-neon-500/30 focus:outline-none font-mono" />
+                  <input type="text" placeholder="https://api.deepseek.com" className="w-full px-3 py-2 rounded-md vercel-input text-sm placeholder:text-[#555] font-mono" />
                 </SettingField>
 
-                <div className="mt-4 p-3 rounded-lg bg-amber-glow/5 border border-amber-glow/15">
+                <div className="mt-4 p-3 rounded-md bg-[#111] border border-[#333]">
                   <div className="flex items-start gap-2">
-                    <Shield className="w-4 h-4 text-amber-glow shrink-0 mt-0.5" />
+                    <Shield className="w-4 h-4 text-[#a1a1aa] shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs text-amber-glow font-medium">Security Note</p>
-                      <p className="text-xs text-space-400 mt-1">
+                      <p className="text-xs text-[#ededed] font-medium">Security Note</p>
+                      <p className="text-xs text-[#71717a] mt-1">
                         For production deployments, store API keys using environment
-                        variables (ASTRAX_LLM_API_KEY) rather than this UI. Keys entered
+                        variables (e.g., ASTRAX_LLM_DEEPSEEK_API_KEY) rather than this UI. Keys entered
                         here are only stored in memory for the current session.
                       </p>
                     </div>
@@ -187,14 +189,13 @@ export default function SettingsPage() {
             {activeTab === "appearance" && (
               <SettingsSection title="Appearance" icon={Palette}>
                 <SettingField label="Theme" hint="Color scheme for the interface">
-                  <select className="w-full px-3 py-2 rounded-lg bg-space-800/50 border border-space-700 text-sm text-space-300 focus:border-neon-500/30 focus:outline-none">
-                    <option>Deep Space (Default)</option>
+                  <select className="w-full px-3 py-2 rounded-md vercel-input text-sm text-[#ededed] bg-[#0a0a0a]">
+                    <option>Vercel Minimal (Dark)</option>
+                    <option>Deep Space</option>
                     <option>Midnight Observatory</option>
-                    <option>Nebula Purple</option>
                   </select>
                 </SettingField>
                 <SettingToggle label="Animations" hint="Enable smooth transitions and effects" defaultChecked={true} />
-                <SettingToggle label="Star Field Background" hint="Show animated star particles" defaultChecked={true} />
               </SettingsSection>
             )}
 
@@ -212,9 +213,9 @@ export default function SettingsPage() {
                     { keys: "⌘E", action: "Export" },
                     { keys: "?", action: "Show Help" },
                   ].map(({ keys, action }) => (
-                    <div key={action} className="flex items-center justify-between py-2 border-b border-space-800/50">
-                      <span className="text-sm text-space-300">{action}</span>
-                      <kbd className="px-2 py-1 rounded text-xs bg-space-800 text-space-400 border border-space-700 font-mono">
+                    <div key={action} className="flex items-center justify-between py-2 border-b border-[#333]">
+                      <span className="text-sm text-[#a1a1aa]">{action}</span>
+                      <kbd className="px-2 py-1 rounded text-xs bg-[#111] text-[#ededed] border border-[#333] font-mono shadow-sm">
                         {keys}
                       </kbd>
                     </div>
@@ -242,10 +243,10 @@ function SettingsSection({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-card p-6 space-y-5"
+      className="vercel-card p-6 space-y-5"
     >
-      <h2 className="text-base font-semibold text-space-100 flex items-center gap-2">
-        <Icon className="w-4 h-4 text-neon-400" />
+      <h2 className="text-base font-semibold text-[#ededed] flex items-center gap-2">
+        <Icon className="w-4 h-4 text-[#a1a1aa]" />
         {title}
       </h2>
       {children}
@@ -264,8 +265,8 @@ function SettingField({
 }) {
   return (
     <div>
-      <label className="text-sm text-space-300 font-medium block mb-1">{label}</label>
-      {hint && <p className="text-xs text-space-600 mb-2">{hint}</p>}
+      <label className="text-sm text-[#ededed] font-medium block mb-1">{label}</label>
+      {hint && <p className="text-xs text-[#71717a] mb-2">{hint}</p>}
       {children}
     </div>
   );
@@ -286,23 +287,23 @@ function SettingToggle({
   return (
     <div className="flex items-center justify-between py-2">
       <div className="flex items-center gap-2">
-        {Icon && <Icon className="w-4 h-4 text-space-500" />}
+        {Icon && <Icon className="w-4 h-4 text-[#71717a]" />}
         <div>
-          <p className="text-sm text-space-300">{label}</p>
-          {hint && <p className="text-xs text-space-600">{hint}</p>}
+          <p className="text-sm text-[#ededed] font-medium">{label}</p>
+          {hint && <p className="text-xs text-[#71717a]">{hint}</p>}
         </div>
       </div>
       <button
         onClick={() => setChecked(!checked)}
         className={`w-10 h-5 rounded-full transition-colors relative ${
-          checked ? "bg-neon-500/30" : "bg-space-700"
+          checked ? "bg-[#ededed]" : "bg-[#333]"
         }`}
       >
         <div
           className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${
             checked
-              ? "left-[calc(100%-18px)] bg-neon-400 shadow-[0_0_6px_rgba(59,130,246,0.5)]"
-              : "left-0.5 bg-space-500"
+              ? "left-[calc(100%-18px)] bg-[#000]"
+              : "left-0.5 bg-[#888]"
           }`}
         />
       </button>

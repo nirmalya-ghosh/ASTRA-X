@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { Users, Activity, Telescope, ScanEye, Download, Star, Loader2, RefreshCw, AlertTriangle, Brain } from "lucide-react";
+import { Users, Activity, Telescope, ScanEye, Download, Star, Loader2, RefreshCw, AlertTriangle, Brain, Shield, Orbit } from "lucide-react";
 import Link from "next/link";
 import { getApiUrl } from "@/lib/api";
 
@@ -19,6 +19,8 @@ interface Candidate {
   snr?: number | null;
   x_centroid?: number;
   y_centroid?: number;
+  object_type?: string;
+  metadata_json?: any;
 }
 
 interface TaskStatus {
@@ -253,9 +255,17 @@ export default function DatasetResultsPage({ params }: { params: Promise<{ id: s
 
                       {/* Details */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <h3 className="font-medium text-[#ededed] text-sm">Candidate AST-{candidate.id}</h3>
-                          <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-medium shrink-0 ${
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium text-[#ededed] text-sm">Candidate AST-{candidate.id}</h3>
+                            {candidate.object_type === 'asteroid' && (
+                              <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-medium shrink-0 bg-blue-950 text-blue-400 border border-blue-900 flex items-center gap-1">
+                                <Shield className="w-3 h-3" />
+                                Known Object
+                              </span>
+                            )}
+                          </div>
+                          <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-medium shrink-0 w-fit ${
                             candidate.classification === 'confirmed' ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 
                             candidate.classification === 'rejected' ? 'bg-red-950 text-red-400 border border-red-900' : 
                             'bg-[#111] text-[#71717a] border border-[#333]'
@@ -294,8 +304,23 @@ export default function DatasetResultsPage({ params }: { params: Promise<{ id: s
                         
                         {/* Notes */}
                         {candidate.notes && (
-                          <div className="mt-2 p-2 bg-[#111] rounded text-xs text-[#a1a1aa] border border-[#222] break-words">
+                          <div className="mt-2 p-2 bg-[#111] rounded text-xs text-[#a1a1aa] border border-[#222] break-words whitespace-pre-line">
                             {candidate.notes}
+                          </div>
+                        )}
+
+                        {/* Orbit */}
+                        {candidate.metadata_json?.orbit && (
+                          <div className="mt-2 p-2 bg-blue-950/20 rounded text-xs text-blue-200 border border-blue-900/50 break-words flex gap-2">
+                            <Orbit className="w-4 h-4 shrink-0 mt-0.5 text-blue-400" />
+                            <div className="w-full">
+                              <span className="font-semibold text-blue-300">Estimated Orbit (Gauss method short-arc)</span>
+                              <div className="grid grid-cols-3 mt-1 gap-2 font-mono text-[10px]">
+                                <div><span className="text-blue-400/50">a:</span> {candidate.metadata_json.orbit.estimated_elements?.a || 'N/A'} AU</div>
+                                <div><span className="text-blue-400/50">e:</span> {candidate.metadata_json.orbit.estimated_elements?.e || 'N/A'}</div>
+                                <div><span className="text-blue-400/50">i:</span> {candidate.metadata_json.orbit.estimated_elements?.i || 'N/A'}°</div>
+                              </div>
+                            </div>
                           </div>
                         )}
 

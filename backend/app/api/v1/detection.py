@@ -184,11 +184,36 @@ async def _run_detection_pipeline(
                             snr = src.get("snr", 0.0)
                             raw_confidence = 1.0 / (1.0 + np.exp(-0.3 * (snr - 10)))
 
+                        # Verification
+                        notes_str = src.get("notes", "") or ""
+                        meta_json = {}
+                        object_type = None
+                        
+                        ra = src.get("ra")
+                        dec = src.get("dec")
+                        if is_fits and ra is not None and dec is not None and raw_confidence > 0.6:
+                            try:
+                                from astrax_engine.analysis.verification import verify_candidate
+                                obs_time = frame.date_obs or datetime.utcnow()
+                                v_res = verify_candidate(ra, dec, obs_time, radius_arcsec=30.0)
+                                
+                                if v_res.get("status") == "known_object":
+                                    object_type = "asteroid"
+                                    notes_str += f"\n[Verification] Known object: {v_res.get('object_name')}"
+                                    meta_json["verification"] = v_res
+                                elif v_res.get("status") == "possible_match":
+                                    notes_str += f"\n[Verification] Possible match: {v_res.get('object_name')} ({v_res.get('distance_arcsec', 0):.1f}\")"
+                                    meta_json["verification"] = v_res
+                            except Exception as e:
+                                logger.warning(f"Verification error: {e}")
+
                         candidate = Candidate(
                             frame_id=frame.id,
                             dataset_id=dataset_id,
                             x_centroid=src.get("x", 0.0),
                             y_centroid=src.get("y", 0.0),
+                            ra=src.get("ra"),
+                            dec=src.get("dec"),
                             flux=src.get("flux"),
                             magnitude=src.get("mag"),
                             snr=src.get("snr"),
@@ -196,7 +221,9 @@ async def _run_detection_pipeline(
                             sharpness=src.get("sharpness"),
                             roundness=src.get("roundness"),
                             confidence_score=round(float(raw_confidence), 4),
-                            notes=src.get("notes"),
+                            notes=notes_str,
+                            object_type=object_type,
+                            metadata_json=meta_json,
                             detection_method=src.get("detection_method", "algorithmic"),
                         )
                         session.add(candidate)
@@ -210,6 +237,38 @@ async def _run_detection_pipeline(
                 task.message = "Analyzing motion across frames..."
                 task.progress = 0.85
                 await session.commit()
+
+            # Tracklet Generation & Orbit Estimation
+            if is_fits and len(frames) >= 3:
+                task.message = "Linking tracklets and estimating orbits..."
+                task.progress = 0.88
+                await session.commit()
+                try:
+                    from astrax_engine.analysis.orbit import estimate_orbit
+                    from astrax_engine.analysis.tracking import ObjectTracker
+                    
+                    frames_sorted = sorted(frames, key=lambda x: x.frame_index)
+                    tracker = ObjectTracker(distance_threshold=100.0)
+                    
+                    for frm in frames_sorted:
+                        frm_cands = [c for c in all_candidates if c.frame_id == frm.id]
+                        dets = [{'x': c.x_centroid, 'y': c.y_centroid, 'cand': c, 'time': frm.date_obs} for c in frm_cands]
+                        tracker.update(dets)
+                        
+                    for t in tracker.tracks:
+                        if len(t['history']) >= 3:
+                            tracklet_cands = [h['cand'] for h in t['history']]
+                            orb_res = estimate_orbit([{'ra': c.ra, 'dec': c.dec, 'time': h.get('time')} for c, h in zip(tracklet_cands, t['history']) if c.ra is not None])
+                            
+                            if orb_res:
+                                for c in tracklet_cands:
+                                    if c.metadata_json is None:
+                                        c.metadata_json = {}
+                                    c.metadata_json['orbit'] = orb_res
+                                    notes_append = f"\n[Orbit] Linked in {len(t['history'])}-frame tracklet."
+                                    c.notes = (c.notes or "") + notes_append
+                except Exception as e:
+                    logger.error(f"Tracking/Orbit failed: {e}")
 
             # False positive filtering
             if enable_filter and has_engine:

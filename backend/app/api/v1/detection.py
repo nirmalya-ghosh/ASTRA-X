@@ -36,7 +36,7 @@ async def run_detection(
         message="Detection pipeline queued",
     )
     session.add(task)
-    await session.flush()
+    await session.commit()
 
     background_tasks.add_task(
         _run_detection_pipeline,

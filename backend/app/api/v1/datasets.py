@@ -216,7 +216,7 @@ async def upload_dataset(
         status="pending",
     )
     session.add(dataset)
-    await session.flush()
+    await session.commit()
 
     # Index in background
     background_tasks.add_task(_index_dataset, dataset.id, str(file_path))
@@ -242,7 +242,7 @@ async def import_folder(
         status="pending",
     )
     session.add(dataset)
-    await session.flush()
+    await session.commit()
 
     background_tasks.add_task(_index_dataset, dataset.id, str(source.resolve()))
 

@@ -39,7 +39,7 @@ export function FloatingAssistant() {
       } else {
         setMessages(prev => [...prev, { role: "ai", content: "I encountered an error connecting to the intelligence engine." }]);
       }
-    } catch (error) {
+    } catch {
       setMessages(prev => [...prev, { role: "ai", content: "System error: Network unreachable. Ensure the backend is running." }]);
     } finally {
       setIsTyping(false);

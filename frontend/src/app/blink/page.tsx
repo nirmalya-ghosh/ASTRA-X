@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import { WebGLFitsViewer } from "@/components/visualization/WebGLFitsViewer";
 
 export default function BlinkPage() {
-  const [datasetId, setDatasetId] = useState<number | undefined>();
+  const [datasetId] = useState<number | undefined>();
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(500);

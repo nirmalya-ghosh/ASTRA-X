@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { ZoomIn, ZoomOut, Maximize, SlidersHorizontal } from 'lucide-react';
 
 interface WebGLFitsViewerProps {
@@ -92,6 +92,7 @@ export function WebGLFitsViewer({ imageUrl, className = "", alt = "FITS Preview"
           transition: isDragging ? 'none' : 'transform 0.1s ease-out'
         }}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img 
           src={imageUrl} 
           alt={alt} 

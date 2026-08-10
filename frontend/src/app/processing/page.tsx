@@ -1,7 +1,7 @@
 "use client";
 import { AppShell } from "@/components/layout/AppShell";
 import { motion } from "framer-motion";
-import { ImagePlus, Layers, ArrowRight, Sliders } from "lucide-react";
+import { ImagePlus, Layers, Sliders } from "lucide-react";
 
 const processingSteps = [
   { name: "Flat Field Correction", category: "Calibration" },

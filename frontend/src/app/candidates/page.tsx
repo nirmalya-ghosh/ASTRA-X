@@ -6,15 +6,10 @@ import { useState } from "react";
 import {
   Users,
   Search,
-  Filter,
   SortDesc,
   Check,
   X,
-  Flag,
   Star,
-  Eye,
-  ChevronDown,
-  ArrowUpRight,
   Sparkles,
   Activity,
 } from "lucide-react";
@@ -23,10 +18,10 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 export default function CandidatesPage() {
-  const [datasetId, setDatasetId] = useState<number | undefined>();
+  const [datasetId] = useState<number | undefined>();
   const [classification, setClassification] = useState<string>("unreviewed");
   
-  const { data, isLoading, refetch } = useQuery({
+  const { data } = useQuery({
     queryKey: ["candidates", { datasetId, classification }],
     queryFn: () => api.candidates.list({ 
       dataset_id: datasetId,
@@ -35,7 +30,6 @@ export default function CandidatesPage() {
   });
 
   const candidates = data?.candidates || [];
-  const totalItems = data?.total || 0;
   
   return (
     <AppShell>
@@ -100,11 +94,11 @@ export default function CandidatesPage() {
 
           {/* Quick Stats */}
           <div className="flex gap-6 mt-4 pt-4 border-t border-space-700/50">
-            <QuickStat label="Total" value="0" />
-            <QuickStat label="Unreviewed" value="0" color="text-amber-glow" />
-            <QuickStat label="Confirmed" value="0" color="text-emerald-glow" />
-            <QuickStat label="Rejected" value="0" color="text-rose-glow" />
-            <QuickStat label="Flagged" value="0" color="text-violet-glow" />
+            <QuickStat label="Total" value={String(data?.total || 0)} />
+            <QuickStat label="Unreviewed" value={String(candidates.filter((item) => item.classification === "unreviewed").length)} color="text-amber-glow" />
+            <QuickStat label="Confirmed" value={String(candidates.filter((item) => item.classification === "confirmed").length)} color="text-emerald-glow" />
+            <QuickStat label="Rejected" value={String(candidates.filter((item) => item.classification === "rejected").length)} color="text-rose-glow" />
+            <QuickStat label="Flagged" value={String(candidates.filter((item) => item.classification === "flagged").length)} color="text-violet-glow" />
           </div>
         </div>
 

@@ -13,12 +13,12 @@ AstraX AI is a professional astronomical image analysis platform that helps rese
 
 ## ✨ Features
 
-## ✨ Features
-
 - **Dataset Management** — Import, index, and browse FITS files, images, and tabular data with automatic header extraction
 - **Advanced Image Processing** — Calibration, noise reduction, enhancement, and image registration
 - **5-Model ML Ensemble Detection** — Consensus voting across IsolationForest, LocalOutlierFactor, EllipticEnvelope, SGDOneClassSVM, and Z-Score statistical outlier detection
 - **Astronomical Source Detection** — DAOStarFinder, IRAFStarFinder, adaptive multi-threshold detection
+- **Astro R-CNN-Inspired Segmentation** — Lightweight per-source masks, star/galaxy morphology classification, and watershed deblending without bundling heavyweight model weights
+- **Astrokit-Inspired Photometry** — Aperture/PSF photometry, instrumental magnitude calibration, pixel scale, Julian Date, airmass, and atmospheric correction utilities
 - **Computer Vision Pipeline** — OpenCV HOG descriptors, adaptive thresholding, contour analysis
 - **Motion Analysis** — Lucas-Kanade & Farneback optical flow, frame differencing, trajectory fitting
 - **False Positive Filtering** — DBSCAN spatial clustering, cosmic ray, hot pixel, satellite streak, and saturation artifact rejection
@@ -47,6 +47,13 @@ A row is flagged only when **≥2 out of 5** models agree it is anomalous. Confi
 - **IRAFStarFinder** — Alternative photometric detection
 - **Adaptive Multi-Threshold** — Runs at σ = 3, 5, 7, 10 and merges
 - **Segmentation + Deblending** — For extended/blended sources
+- **RCNN-Style Mask Export Surface** — `/segmentation` page calls `/api/v1/detection/segmentation` for source masks, bounding boxes, morphology scores, and deblended components
+
+### Photometry & Astrometry Utilities
+- **Aperture Photometry** — Local background annulus subtraction with SNR and instrumental magnitude estimates
+- **PSF Photometry** — DAOStarFinder-driven PSF-style source measurement
+- **Airmass & Atmospheric Correction** — AltAz/sec(z), Julian Date, filter extinction coefficients, and color-temperature helpers
+- **Catalog/Astrometry Helpers** — Pixel scale and catalog matching API surfaces for science review workflows
 
 ### Standard Images (JPG/PNG)
 - **OpenCV Adaptive Thresholding** — Local anomaly detection
@@ -121,6 +128,15 @@ ASTRA-X/
 | Database | SQLite (local) / PostgreSQL (production) |
 | AI | DeepSeek, Grok, Gemini, OpenAI, OpenRouter |
 | Deploy | Vercel (frontend) + Render (backend) |
+
+## 🔭 Reference Integrations
+
+AstraX adapts useful workflow ideas from:
+
+- [`burke86/astro_rcnn`](https://github.com/burke86/astro_rcnn) — source instance masks, star/galaxy classification, and deblending workflow concepts
+- [`typpo/astrokit`](https://github.com/typpo/astrokit) — photometry, airmass, lightcurve, and astrometry workflow concepts
+
+The application does **not** vendor their heavy notebooks, sample images, Django assets, Mask R-CNN code, or pretrained model weights. The integrated implementation stays native to this FastAPI/Next.js codebase.
 
 ## 📡 API Documentation
 

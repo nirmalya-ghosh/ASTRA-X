@@ -1,6 +1,5 @@
 "use client";
 import { AppShell } from "@/components/layout/AppShell";
-import { Telescope } from "lucide-react";
 import { WebGLFitsViewer } from "@/components/visualization/WebGLFitsViewer";
 
 export default function InspectorPage() {
@@ -36,7 +35,7 @@ export default function InspectorPage() {
               </div>
               <div className="flex justify-between items-center py-2 border-b border-space-800">
                 <span className="text-xs text-space-400">Declination</span>
-                <span className="text-sm font-mono text-space-200">+45° 20' 11"</span>
+                <span className="text-sm font-mono text-space-200">+45° 20&apos; 11&quot;</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-space-800">
                 <span className="text-xs text-space-400">SNR</span>

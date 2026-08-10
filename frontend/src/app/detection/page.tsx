@@ -1,17 +1,13 @@
 "use client";
 
 import { AppShell } from "@/components/layout/AppShell";
-import { motion } from "framer-motion";
 import { useState } from "react";
 import {
   Search,
   Play,
-  Settings,
   Sliders,
   Gauge,
-  Zap,
   Target,
-  Eye,
   Activity,
   Shield,
   CheckCircle2,

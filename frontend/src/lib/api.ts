@@ -290,4 +290,49 @@ export const api = {
         body: JSON.stringify(data),
       }),
   },
+
+  // Photometry (from astrokit integration)
+  photometry: {
+    run: (data: { dataset_id: number; frame_index?: number; method?: string; aperture_radius?: number; sigma_psf?: number; threshold?: number }) =>
+      apiFetch<{ dataset_id: number; method: string; n_sources: number; sources: Array<Record<string, unknown>> }>("/photometry/run", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    calibrate: (data: { dataset_id: number; zero_point?: number; extinction_coeff?: number; airmass?: number }) =>
+      apiFetch<Record<string, unknown>>("/photometry/calibrate", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  },
+
+  // Lightcurve (from astrokit integration)
+  lightcurve: {
+    generate: (data: { dataset_id: number; source_x?: number; source_y?: number; aperture_radius?: number }) =>
+      apiFetch<{ dataset_id: number; n_points: number; points: Array<Record<string, unknown>>; mag_mean?: number; mag_std?: number; mag_range?: number }>("/lightcurve/generate", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    period: (data: { dataset_id: number; min_period?: number; max_period?: number }) =>
+      apiFetch<Record<string, unknown>>("/lightcurve/period", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  },
+
+  // Astrometry (enhanced with astrokit catalog matching)
+  astrometry: {
+    solve: (data: { dataset_id: number; frame_index?: number }) =>
+      apiFetch<{ status: string; wcs_header?: Record<string, unknown>; pixel_scale_arcsec?: number; corners?: Record<string, unknown> }>("/astrometry/solve", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    catalogMatch: (data: { dataset_id: number; catalog?: string; radius_arcsec?: number }) =>
+      apiFetch<{ n_sources: number; n_matched: number; results: Array<Record<string, unknown>> }>("/astrometry/catalog", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  },
 };

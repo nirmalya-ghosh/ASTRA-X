@@ -1,12 +1,12 @@
 "use client";
 import { AppShell } from "@/components/layout/AppShell";
 import { motion } from "framer-motion";
-import { Rocket, Play, Pause, RefreshCw, CheckCircle2, Clock, Zap, Layers } from "lucide-react";
+import { Rocket, CheckCircle2, Clock, Layers } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 export default function MissionControlPage() {
-  const { data: tasks = [], isLoading } = useQuery({
+  const { data: tasks = [] } = useQuery({
     queryKey: ["tasks"],
     queryFn: () => api.tasks.list(),
     refetchInterval: 5000, // poll every 5s

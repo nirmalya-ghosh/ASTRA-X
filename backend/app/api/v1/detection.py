@@ -7,6 +7,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +19,139 @@ from app.services.task_scheduler import schedule_coroutine
 
 logger = logging.getLogger("astrax.detection")
 router = APIRouter()
+
+
+class SegmentationRequest(BaseModel):
+    """Run lightweight Astro R-CNN-style instance segmentation on one frame."""
+
+    dataset_id: int
+    frame_index: int = 0
+    threshold_sigma: float = Field(default=3.0, ge=0.5, le=25.0)
+    min_area: int = Field(default=5, ge=1, le=10_000)
+    max_sources: int = Field(default=500, ge=1, le=5_000)
+    include_deblending: bool = True
+
+
+def _load_frame_image(frame: Frame) -> np.ndarray:
+    """Load a FITS or standard image frame as a 2D float64 array."""
+    frame_path = Path(frame.file_path)
+    if not frame_path.exists():
+        raise HTTPException(status_code=404, detail=f"File not found: {frame.filename}")
+
+    frame_ext = normalized_extension(frame_path)
+    if frame_ext in FITS_EXTS:
+        from astrax_engine.io.fits_loader import FITSLoader
+
+        return FITSLoader().load_data(frame_path)
+
+    if frame_ext in IMAGE_EXTS:
+        import cv2
+
+        image = cv2.imread(str(frame_path), cv2.IMREAD_GRAYSCALE)
+        if image is None:
+            raise HTTPException(status_code=400, detail=f"Could not read image: {frame.filename}")
+        return image.astype(np.float64)
+
+    raise HTTPException(
+        status_code=400,
+        detail="Segmentation requires a FITS, JPG, JPEG, or PNG frame",
+    )
+
+
+@router.post("/segmentation")
+async def run_instance_segmentation(
+    body: SegmentationRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    """Detect, classify, and optionally deblend sources in a single frame."""
+    dataset = await session.get(Dataset, body.dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+    result = await session.execute(
+        select(Frame).where(
+            Frame.dataset_id == body.dataset_id,
+            Frame.frame_index == body.frame_index,
+        )
+    )
+    frame = result.scalar_one_or_none()
+    if not frame:
+        raise HTTPException(status_code=404, detail=f"Frame {body.frame_index} not found")
+
+    try:
+        from astrax_engine.detection.segmentation import run_segmentation
+        from astrax_engine.detection.deblending import run_deblending
+
+        image_data = _load_frame_image(frame)
+        segmentation = run_segmentation(
+            image_data,
+            threshold_sigma=body.threshold_sigma,
+            min_area=body.min_area,
+            max_sources=body.max_sources,
+            multi_threshold=True,
+        )
+
+        deblend = None
+        if body.include_deblending:
+            deblend = run_deblending(
+                image_data,
+                label_map=segmentation.label_map,
+                min_area=body.min_area,
+            )
+
+        sources = [
+            {
+                "source_id": src.source_id,
+                "class_id": src.class_id,
+                "class_name": src.class_name,
+                "score": src.score,
+                "bbox": list(src.bbox),
+                "x_centroid": src.x_centroid,
+                "y_centroid": src.y_centroid,
+                "area_pixels": src.area_pixels,
+                "flux": src.flux,
+                "peak_value": src.peak_value,
+                "ellipticity": src.ellipticity,
+                "fwhm": src.fwhm,
+                "concentration_index": src.concentration_index,
+            }
+            for src in segmentation.sources
+        ]
+
+        return {
+            "dataset_id": body.dataset_id,
+            "frame_index": body.frame_index,
+            "frame_filename": frame.filename,
+            "image_shape": list(segmentation.image_shape),
+            "n_sources": len(sources),
+            "n_stars": segmentation.n_stars,
+            "n_galaxies": segmentation.n_galaxies,
+            "sources": sources,
+            "deblending": {
+                "n_blended_groups": deblend.n_blended_groups,
+                "n_total_components": deblend.n_total_components,
+                "components": [
+                    {
+                        "component_id": comp.component_id,
+                        "parent_label": comp.parent_label,
+                        "x_centroid": comp.x_centroid,
+                        "y_centroid": comp.y_centroid,
+                        "flux": comp.flux,
+                        "peak_value": comp.peak_value,
+                        "area_pixels": comp.area_pixels,
+                        "confidence": comp.confidence,
+                    }
+                    for comp in deblend.components[: body.max_sources]
+                ],
+            }
+            if deblend
+            else None,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Segmentation failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.post("/run", response_model=TaskStatusResponse, status_code=202)

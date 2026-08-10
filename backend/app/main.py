@@ -14,6 +14,7 @@ from fastapi.responses import ORJSONResponse
 from app.config import settings
 from app.db.models import init_db
 from app.api.v1 import datasets, processing, detection, candidates, assistant, export, tasks, app_settings
+from app.api.v1 import photometry, lightcurve, astrometry_api
 
 logger = logging.getLogger("astrax")
 
@@ -106,6 +107,9 @@ def create_app() -> FastAPI:
     app.include_router(export.router, prefix=f"{api_prefix}/export", tags=["Export"])
     app.include_router(tasks.router, prefix=f"{api_prefix}/tasks", tags=["Tasks"])
     app.include_router(app_settings.router, prefix=f"{api_prefix}/settings", tags=["Settings"])
+    app.include_router(photometry.router, prefix=f"{api_prefix}/photometry", tags=["Photometry"])
+    app.include_router(lightcurve.router, prefix=f"{api_prefix}/lightcurve", tags=["Lightcurve"])
+    app.include_router(astrometry_api.router, prefix=f"{api_prefix}/astrometry", tags=["Astrometry"])
     
     # WebSocket
     app.include_router(ws.router, tags=["WebSockets"])

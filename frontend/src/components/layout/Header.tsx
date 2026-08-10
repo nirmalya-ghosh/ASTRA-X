@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search, ChevronRight, Settings, Plus, Sparkles } from "lucide-react";
+import { Search, Settings, Plus, Sparkles } from "lucide-react";
 
 interface HeaderProps {
   onCommandOpen: () => void;

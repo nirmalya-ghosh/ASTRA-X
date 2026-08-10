@@ -22,7 +22,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 export default function DatasetsPage() {
-  const { data, isLoading, refetch } = useQuery({
+  const { data, refetch } = useQuery({
     queryKey: ["datasets"],
     queryFn: () => api.datasets.list(),
   });

@@ -2,7 +2,7 @@
 
 import { AppShell } from "@/components/layout/AppShell";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Bot,
   Send,
@@ -12,7 +12,6 @@ import {
   BarChart3,
   Telescope,
   Settings,
-  ArrowUpRight,
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -25,6 +24,12 @@ interface Message {
 }
 
 export default function AssistantPage() {
+  const idCounter = useRef(0);
+  const nextMessageId = (prefix: string) => {
+    idCounter.current += 1;
+    return `${prefix}-${idCounter.current}`;
+  };
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -42,18 +47,18 @@ export default function AssistantPage() {
       setMessages((prev) => [
         ...prev,
         {
-          id: data.session_id + Date.now(),
+          id: nextMessageId(data.session_id || "assistant"),
           role: "assistant",
           content: data.content,
           timestamp: new Date(data.created_at),
         },
       ]);
     },
-    onError: (err) => {
+    onError: () => {
       setMessages((prev) => [
         ...prev,
         {
-          id: `err-${Date.now()}`,
+          id: nextMessageId("err"),
           role: "assistant",
           content: "Sorry, I encountered an error connecting to the AI service.",
           timestamp: new Date(),
@@ -66,7 +71,7 @@ export default function AssistantPage() {
     if (!text.trim()) return;
 
     const userMsg: Message = {
-      id: `user-${Date.now()}`,
+      id: nextMessageId("user"),
       role: "user",
       content: text,
       timestamp: new Date(),

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useCallback, useState, useEffect, use } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { Users, Activity, Telescope, ScanEye, Download, Star, Loader2, RefreshCw, AlertTriangle, Brain, Shield, Orbit } from "lucide-react";
+import { Users, Activity, Telescope, ScanEye, Download, Loader2, RefreshCw, AlertTriangle, Brain, Shield, Orbit } from "lucide-react";
 import Link from "next/link";
 import { getApiUrl } from "@/lib/api";
 
@@ -20,7 +20,15 @@ interface Candidate {
   x_centroid?: number;
   y_centroid?: number;
   object_type?: string;
-  metadata_json?: any;
+  metadata_json?: {
+    orbit?: {
+      estimated_elements?: {
+        a?: string | number;
+        e?: string | number;
+        i?: string | number;
+      };
+    };
+  } & Record<string, unknown>;
 }
 
 interface TaskStatus {
@@ -28,7 +36,7 @@ interface TaskStatus {
   status: string;
   progress: number;
   message: string;
-  result_json?: any;
+  result_json?: Record<string, unknown>;
 }
 
 export default function DatasetResultsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -44,7 +52,7 @@ export default function DatasetResultsPage({ params }: { params: Promise<{ id: s
 
   const apiUrl = getApiUrl();
 
-  async function fetchCandidates() {
+  const fetchCandidates = useCallback(async () => {
     try {
       const candRes = await fetch(`${apiUrl}/candidates?dataset_id=${datasetId}&limit=100&sort_by=confidence_score&sort_desc=true`);
       if (candRes.ok) {
@@ -54,7 +62,26 @@ export default function DatasetResultsPage({ params }: { params: Promise<{ id: s
     } catch (err) {
       console.error("Failed to fetch candidates", err);
     }
-  }
+  }, [apiUrl, datasetId]);
+
+  const pollTask = useCallback(async (taskId: number) => {
+    for (let i = 0; i < 600; i++) {
+      try {
+        const res = await fetch(`${apiUrl}/tasks/${taskId}`);
+        if (!res.ok) break;
+        const task = await res.json();
+        setTaskProgress(Math.round((task.progress || 0) * 100));
+        setTaskMessage(task.message || "Processing...");
+        if (task.status === "completed" || task.status === "failed") {
+          setTaskRunning(false);
+          await fetchCandidates();
+          break;
+        }
+      } catch { break; }
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    setTaskRunning(false);
+  }, [apiUrl, fetchCandidates]);
 
   useEffect(() => {
     async function fetchData() {
@@ -94,27 +121,7 @@ export default function DatasetResultsPage({ params }: { params: Promise<{ id: s
       }
     }
     fetchData();
-  }, [datasetId]);
-
-  async function pollTask(taskId: number) {
-    for (let i = 0; i < 600; i++) {
-      try {
-        const res = await fetch(`${apiUrl}/tasks/${taskId}`);
-        if (!res.ok) break;
-        const task = await res.json();
-        setTaskProgress(Math.round((task.progress || 0) * 100));
-        setTaskMessage(task.message || "Processing...");
-        if (task.status === "completed" || task.status === "failed") {
-          setTaskRunning(false);
-          // Refresh candidates
-          await fetchCandidates();
-          break;
-        }
-      } catch { break; }
-      await new Promise(r => setTimeout(r, 2000));
-    }
-    setTaskRunning(false);
-  }
+  }, [apiUrl, datasetId, fetchCandidates, pollTask]);
 
   const getConfidenceColor = (score: number) => {
     if (score >= 0.8) return "text-emerald-400";

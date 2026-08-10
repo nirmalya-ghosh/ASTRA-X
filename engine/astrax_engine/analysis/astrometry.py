@@ -191,3 +191,67 @@ def fit_wcs_from_points(
     except Exception as exc:
         logger.warning(f"Matched-point WCS fit failed: {exc}")
         return {"status": "failed", "reason": str(exc), "solver": "linear-fit"}
+
+
+def cross_match_catalog(
+    ra_list: list[float],
+    dec_list: list[float],
+    catalog: str = "I/329",
+    radius_arcsec: float = 2.0,
+    fields: Optional[list[str]] = None,
+) -> list[dict]:
+    """
+    Cross-match source positions with a Vizier catalog.
+    Inspired by astrokit's catalog.py URAT1 lookup.
+
+    Parameters
+    ----------
+    ra_list : source RA in degrees
+    dec_list : source Dec in degrees
+    catalog : Vizier catalog ID (default URAT1 = I/329)
+    radius_arcsec : matching radius in arcseconds
+    fields : specific catalog fields to retrieve
+
+    Returns
+    -------
+    list of matched source dicts
+    """
+    if fields is None:
+        fields = ['_RAJ2000', '_DEJ2000', 'Bmag', 'Vmag', 'gmag', 'rmag', 'imag']
+
+    try:
+        from astroquery.vizier import Vizier
+        import astropy.units as u
+
+        vizier = Vizier(columns=fields)
+        vizier.ROW_LIMIT = 1
+
+        results = []
+        for ra, dec in zip(ra_list, dec_list):
+            search_str = f"{ra} {dec}"
+            try:
+                matches = vizier.query_region(
+                    search_str, radius=f"{radius_arcsec}s", catalog=catalog
+                )
+                if matches and len(matches) > 0 and len(matches[0]) > 0:
+                    row = matches[0][0]
+                    entry = {"ra": ra, "dec": dec, "matched": True}
+                    for f in fields:
+                        try:
+                            val = row[f]
+                            entry[f] = float(val) if val is not None else None
+                        except (KeyError, ValueError, TypeError):
+                            entry[f] = None
+                    results.append(entry)
+                else:
+                    results.append({"ra": ra, "dec": dec, "matched": False})
+            except Exception:
+                results.append({"ra": ra, "dec": dec, "matched": False})
+
+        matched_count = sum(1 for r in results if r.get("matched"))
+        logger.info("Catalog cross-match: %d/%d sources matched", matched_count, len(ra_list))
+        return results
+
+    except ImportError:
+        logger.error("astroquery not installed for catalog cross-matching.")
+        return [{"ra": ra, "dec": dec, "matched": False} for ra, dec in zip(ra_list, dec_list)]

@@ -9,6 +9,7 @@ import {
   Rocket,
   Search,
   ScanEye,
+  Layers,
   Users,
   ImagePlus,
   Bot,
@@ -44,6 +45,7 @@ const commands: CommandItem[] = [
   { id: "mission", label: "Mission Control", href: "/mission-control", icon: Rocket, section: "Pages", keywords: ["pipeline", "queue"] },
   { id: "detection", label: "Detection Workspace", href: "/detection", icon: Search, section: "Pages", keywords: ["detect", "find", "sources"] },
   { id: "blink", label: "Blink Comparator", href: "/blink", icon: ScanEye, section: "Pages", keywords: ["compare", "animation", "frames"] },
+  { id: "segmentation", label: "Instance Segmentation", href: "/segmentation", icon: Layers, section: "Pages", keywords: ["rcnn", "mask", "deblend", "star", "galaxy"] },
   { id: "candidates", label: "Candidate Explorer", href: "/candidates", icon: Users, section: "Pages", keywords: ["review", "objects"] },
   { id: "processing", label: "Image Processing", href: "/processing", icon: ImagePlus, section: "Pages", keywords: ["calibrate", "enhance", "filter"] },
   { id: "assistant", label: "AI Assistant", href: "/assistant", icon: Bot, section: "Pages", keywords: ["chat", "ai", "explain"] },
@@ -99,20 +101,16 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         setSelectedIndex((i) => Math.max(i - 1, 0));
       } else if (e.key === "Enter") {
         e.preventDefault();
-        if (filtered[selectedIndex]) {
-          handleSelect(filtered[selectedIndex]);
-        }
+          const activeIndex = Math.min(selectedIndex, filtered.length - 1);
+          if (filtered[activeIndex]) {
+            handleSelect(filtered[activeIndex]);
+          }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, filtered, selectedIndex, onClose, handleSelect]);
-
-  // Reset selection when query changes
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [query]);
 
   return (
     <AnimatePresence>
@@ -144,7 +142,10 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                   type="text"
                   placeholder="Search pages, actions..."
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setSelectedIndex(0);
+                  }}
                   className="flex-1 bg-transparent text-sm text-space-100 placeholder:text-space-500 outline-none"
                 />
                 <kbd className="px-1.5 py-0.5 rounded text-[10px] bg-space-800 text-space-500 border border-space-700">
@@ -165,7 +166,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                       onClick={() => handleSelect(item)}
                       onMouseEnter={() => setSelectedIndex(i)}
                       className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                        i === selectedIndex
+                        i === Math.min(selectedIndex, filtered.length - 1)
                           ? "bg-neon-500/10 text-neon-400"
                           : "text-space-300 hover:bg-space-800/50"
                       }`}

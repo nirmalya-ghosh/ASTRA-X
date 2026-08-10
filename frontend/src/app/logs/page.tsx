@@ -1,7 +1,7 @@
 "use client";
 import { AppShell } from "@/components/layout/AppShell";
 import { motion } from "framer-motion";
-import { ScrollText, Filter, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useState } from "react";
 
 const sampleLogs = [

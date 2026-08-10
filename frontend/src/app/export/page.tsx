@@ -1,7 +1,7 @@
 "use client";
 import { AppShell } from "@/components/layout/AppShell";
 import { motion } from "framer-motion";
-import { Download, FileText, FileJson, FileImage, Archive, Table2 } from "lucide-react";
+import { FileText, FileJson, FileImage, Archive, Table2 } from "lucide-react";
 
 const exportFormats = [
   { icon: Table2, label: "CSV", desc: "Candidate data as spreadsheet", ext: ".csv" },

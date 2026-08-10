@@ -21,7 +21,6 @@ photutils>=2.0.0
 astroalign>=2.5.0
 astroscrappy>=1.2.0
 astroquery>=0.4.7
-poliastro>=0.17.0
 filterpy>=1.4.5
 
 # Image Processing & ML Models
